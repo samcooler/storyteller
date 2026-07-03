@@ -542,8 +542,8 @@ class PolyculeSimulator(Game):
         diagram = pygame.Rect(panel.left + int(10 * scale), panel.top + header_h,
                                panel.width - int(20 * scale), panel.height - header_h - int(10 * scale))
         center = diagram.center
-        max_r = min(diagram.width, diagram.height) / 2 - int(60 * scale)
-        min_r = int(110 * scale)
+        max_r = min(diagram.width, diagram.height) / 2 - int(34 * scale)
+        min_r = int(45 * scale)
         return panel, diagram, center, min_r, max_r, scale
 
     @staticmethod
@@ -567,35 +567,102 @@ class PolyculeSimulator(Game):
             return self.pending_target
         return None
 
+    @staticmethod
+    def _name_jitter(name):
+        # Small deterministic offset so members with near-identical strength
+        # don't sit on perfectly even polygon vertices.
+        return ((hash(name) % 1000) / 1000.0 - 0.5) * 0.35
+
+    def _weighted_ring_angles(self, ring, active):
+        if not ring:
+            return {}
+        strengths = {m.name: self._strength(self.get_rel(active.name, m.name)) for m in ring}
+        ordered = sorted(ring, key=lambda m: strengths[m.name], reverse=True)
+        # Stronger bonds get a narrower angular slice, so close partners cluster
+        # a bit near the top while weaker ties spread wider around the rest of
+        # the circle - the shape reflects the relationships instead of always
+        # forming a regular polygon. Kept gentle (0.75x-1.25x) so nodes don't
+        # pile on top of each other.
+        weights = [1.25 - strengths[m.name] * 0.5 for m in ordered]
+        total = sum(weights)
+        span = 2 * math.pi / total
+        angles = {}
+        cursor = -math.pi / 2
+        for member, wgt in zip(ordered, weights):
+            slice_w = wgt * span
+            angles[member.name] = cursor + slice_w / 2 + self._name_jitter(member.name)
+            cursor += slice_w
+        return angles
+
+    def _relax_ring_positions(self, positions, center, min_r, max_r, node_diameter):
+        # A few iterations of simple pairwise repulsion so nodes never overlap,
+        # regardless of how the angle/radius weighting happened to cluster them.
+        names = list(positions.keys())
+        min_sep = node_diameter * 1.8  # room for the name label under each portrait
+        for _ in range(10):
+            for i in range(len(names)):
+                for j in range(i + 1, len(names)):
+                    ax, ay = positions[names[i]]
+                    bx, by = positions[names[j]]
+                    dx, dy = bx - ax, by - ay
+                    dist = math.hypot(dx, dy) or 0.001
+                    if dist < min_sep:
+                        push = (min_sep - dist) / 2
+                        ux, uy = dx / dist, dy / dist
+                        positions[names[i]] = (ax - ux * push, ay - uy * push)
+                        positions[names[j]] = (bx + ux * push, by + uy * push)
+            for name in names:
+                x, y = positions[name]
+                dx, dy = x - center[0], y - center[1]
+                dist = math.hypot(dx, dy) or 0.001
+                clamped = max(min_r * 0.85, min(max_r * 1.15, dist))
+                if clamped != dist:
+                    positions[name] = (center[0] + dx / dist * clamped, center[1] + dy / dist * clamped)
+        return positions
+
+    @staticmethod
+    def _clamp_to_rect(pos, rect, margin):
+        x = max(rect.left + margin, min(rect.right - margin, pos[0]))
+        y = max(rect.top + margin, min(rect.bottom - margin, pos[1]))
+        return (x, y)
+
     def update(self, dt):
         self.anim_t += dt
-        _, _, center, min_r, max_r, scale = self._network_geometry()
+        _, diagram, center, min_r, max_r, scale = self._network_geometry()
         active = self.active
         ring = [m for m in self.members if m.name != active.name]
-        n = len(ring)
         rate = min(1.0, dt * 2.5)
 
-        target_positions = {active.name: center}
-        for i, member in enumerate(ring):
-            angle = (i / n) * 2 * math.pi - math.pi / 2 if n else 0
+        ring_angles = self._weighted_ring_angles(ring, active)
+        ring_positions = {}
+        for member in ring:
+            angle = ring_angles[member.name]
             strength = self._strength(self.get_rel(active.name, member.name))
             radius = max_r - strength * (max_r - min_r)
-            target_positions[member.name] = (center[0] + radius * math.cos(angle),
-                                              center[1] + radius * math.sin(angle))
+            ring_positions[member.name] = (center[0] + radius * math.cos(angle),
+                                            center[1] + radius * math.sin(angle))
+        node_diameter = 2 * int(19 * scale)
+        ring_positions = self._relax_ring_positions(ring_positions, center, min_r, max_r, node_diameter)
+        ring_margin = int(19 * scale) + int(22 * scale)  # node radius + label line
+        for name, pos in ring_positions.items():
+            ring_positions[name] = self._clamp_to_rect(pos, diagram, ring_margin)
 
+        target_positions = {active.name: center, **ring_positions}
         for name, target in target_positions.items():
             cur = self.node_pos.get(name, target)
             self.node_pos[name] = (cur[0] + (target[0] - cur[0]) * rate, cur[1] + (target[1] - cur[1]) * rate)
 
+        prospect_margin = int(12 * scale) + int(18 * scale)
         for pname, prospect in self.prospects.items():
             anchor = self.node_pos.get(prospect["met_by"], center)
             siblings = [n for n, p in self.prospects.items() if p["met_by"] == prospect["met_by"]]
             idx = siblings.index(pname)
             angle = (idx / max(1, len(siblings))) * 2 * math.pi + 0.6
             strength = prospect["interest"] / 100.0
-            sat_max, sat_min = 130 * scale, 60 * scale
+            sat_max, sat_min = 52 * scale, 36 * scale
             radius = sat_max - strength * (sat_max - sat_min)
             target = (anchor[0] + radius * math.cos(angle), anchor[1] + radius * math.sin(angle))
+            target = self._clamp_to_rect(target, diagram, prospect_margin)
             cur = self.node_pos.get(pname, target)
             self.node_pos[pname] = (cur[0] + (target[0] - cur[0]) * rate, cur[1] + (target[1] - cur[1]) * rate)
 
@@ -633,7 +700,7 @@ class PolyculeSimulator(Game):
             width = max(1, round((1 + t * 5) * scale))
             ui.draw_dashed_line(surface, color, anchor, pos, width, dash=int(8 * scale), gap=int(5 * scale))
 
-        node_r = int(26 * scale)
+        node_r = int(23 * scale)
         pygame.draw.circle(surface, (255, 220, 120), center, node_r + int(4 * scale))
         pixel_portrait.draw_bust(surface, pygame.Rect(int(center[0] - node_r), int(center[1] - node_r),
                                                         node_r * 2, node_r * 2), active.seed)
@@ -641,7 +708,7 @@ class PolyculeSimulator(Game):
         label = name_font.render(f"{active.name} (active)", True, ui.TEXT_COLOR)
         surface.blit(label, label.get_rect(midtop=(center[0], center[1] + node_r + int(6 * scale))))
 
-        node_r2 = int(22 * scale)
+        node_r2 = int(19 * scale)
         ring_font = ui.font(16, scale)
         for member in ring:
             pos = self.node_pos.get(member.name, center)
@@ -655,7 +722,7 @@ class PolyculeSimulator(Game):
             label = ring_font.render(member.name, True, ui.TEXT_COLOR)
             surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + node_r2 + int(4 * scale))))
 
-        node_r3 = int(14 * scale)
+        node_r3 = int(12 * scale)
         for pname, prospect in self.prospects.items():
             pos = self.node_pos.get(pname, center)
             if pname == highlight:
