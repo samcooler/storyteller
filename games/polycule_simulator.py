@@ -268,6 +268,18 @@ class PolyculeSimulator(Game):
             return [n for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD]
         return []
 
+    def _target_info(self, name):
+        """Returns (character, kind, stat) where kind is 'member' or 'prospect'
+        and stat is the relationship dict (member) or interest int (prospect)."""
+        for m in self.members:
+            if m.name == name:
+                rel = self.get_rel(self.active.name, name) if name != self.active.name else None
+                return m, "member", rel
+        prospect = self.prospects.get(name)
+        if prospect:
+            return prospect["char"], "prospect", prospect["interest"]
+        return None, None, None
+
     def _roll(self, lo, hi):
         return self.rng.randint(lo, hi)
 
@@ -503,9 +515,9 @@ class PolyculeSimulator(Game):
                     self.hand_index = 0
                     self.state = "result"
         elif self.state == "target":
-            if event.key in (pygame.K_UP, pygame.K_w):
+            if event.key in (pygame.K_LEFT, pygame.K_a, pygame.K_UP, pygame.K_w):
                 self.target_index = (self.target_index - 1) % len(self.target_options)
-            elif event.key in (pygame.K_DOWN, pygame.K_s):
+            elif event.key in (pygame.K_RIGHT, pygame.K_d, pygame.K_DOWN, pygame.K_s):
                 self.target_index = (self.target_index + 1) % len(self.target_options)
             elif event.key == pygame.K_BACKSPACE:
                 self.state = "hand"
@@ -798,12 +810,15 @@ class PolyculeSimulator(Game):
                                     main_rect.width - int(40 * scale), max(0, content_bottom - content_top))
 
         if self.state == "target":
-            surface.blit(body_font.render(f"Choose a target for {self.pending_card['name']}:", True, ui.TEXT_COLOR),
-                         (content_rect.left, content_rect.top))
-            labels = list(self.target_options)
-            list_bottom = self._draw_option_list(surface, content_rect, body_font, labels, self.target_index)
-            hint = small_font.render("Enter to confirm, Backspace to cancel", True, ui.DIM_TEXT)
-            surface.blit(hint, (content_rect.left, min(list_bottom + int(10 * scale), content_rect.bottom - int(6 * scale))))
+            ui.blit_wrapped(surface, body_font, f"Target for {self.pending_card['name']}:",
+                             ui.TEXT_COLOR, content_rect.left + content_rect.width // 2, content_rect.top, content_rect.width)
+            cards_top = content_rect.top + int(32 * scale)
+            cards_rect = pygame.Rect(content_rect.left, cards_top,
+                                      content_rect.width, max(0, content_rect.bottom - cards_top - int(22 * scale)))
+            self._draw_target_cards(surface, cards_rect, scale)
+            ui.blit_wrapped(surface, small_font, "Enter confirm, Backspace cancel",
+                             ui.DIM_TEXT, content_rect.left + content_rect.width // 2,
+                             content_rect.bottom - int(16 * scale), content_rect.width)
         elif self.state == "sub_choice":
             prompts = {
                 "week": f"When should {self.active.name} plan with {self.pending_target}?",
@@ -829,6 +844,73 @@ class PolyculeSimulator(Game):
                              content_rect.width)
 
         self._draw_hand_row(surface, main_rect, scale, body_font, small_font)
+
+    def _draw_character_card(self, surface, rect, name, scale, selected):
+        border = ui.ACCENT if selected else ui.BORDER_OUTER
+        top_color = (110, 70, 130) if selected else ui.PASTEL_TOP
+        bottom_color = (150, 90, 160) if selected else ui.PASTEL_BOTTOM
+        ui.draw_panel(surface, rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=border)
+        char, kind, stat = self._target_info(name)
+        if char is None:
+            return
+        pad = int(8 * scale)
+        portrait_size = min(rect.width - pad * 2, int(rect.height * 0.32))
+        portrait_rect = pygame.Rect(rect.centerx - portrait_size // 2, rect.top + pad, portrait_size, portrait_size)
+        pixel_portrait.draw_bust(surface, portrait_rect, char.seed)
+
+        name_font = ui.font(min(14, max(9, rect.width // 8)), scale)
+        small_font = ui.font(10, scale)
+        y = portrait_rect.bottom + int(3 * scale)
+        name_label = name_font.render(char.name, True, ui.TEXT_COLOR)
+        surface.blit(name_label, name_label.get_rect(midtop=(rect.centerx, y)))
+        y += name_label.get_height() + int(1 * scale)
+
+        for line in ui.wrap_text(small_font, char.archetype, rect.width - pad * 2)[:1]:
+            label = small_font.render(line, True, ui.DIM_TEXT)
+            surface.blit(label, label.get_rect(midtop=(rect.centerx, y)))
+            y += small_font.get_height()
+        y += int(3 * scale)
+
+        bar_w = rect.width - pad * 2
+        bar_h = max(3, int(7 * scale))
+        if kind == "member" and stat is not None:
+            ui.draw_bar(surface, pygame.Rect(rect.left + pad, y, bar_w, bar_h), stat["trust"], 100, (140, 180, 240))
+            y += bar_h + int(3 * scale)
+            ui.draw_bar(surface, pygame.Rect(rect.left + pad, y, bar_w, bar_h), stat["spark"], 100, (240, 140, 190))
+            y += bar_h + int(5 * scale)
+        elif kind == "prospect":
+            ui.draw_bar(surface, pygame.Rect(rect.left + pad, y, bar_w, bar_h), stat, 100, (255, 150, 190))
+            y += bar_h + int(5 * scale)
+
+        half = bar_w // 2 - int(2 * scale)
+        ui.draw_bar(surface, pygame.Rect(rect.left + pad, y, half, bar_h), char.statuses["happiness"], 100, (255, 210, 120))
+        ui.draw_bar(surface, pygame.Rect(rect.left + pad + half + int(4 * scale), y, half, bar_h),
+                    char.statuses["energy"], 100, (150, 220, 255))
+
+    def _draw_target_cards(self, surface, content_rect, scale):
+        names = self.target_options
+        gap = int(10 * scale)
+        card_w = int(85 * scale)
+        card_h = min(content_rect.height, int(170 * scale))
+        max_visible = max(1, (content_rect.width + gap) // (card_w + gap))
+        if len(names) <= max_visible:
+            start_idx = 0
+        else:
+            start_idx = max(0, min(self.target_index - max_visible // 2, len(names) - max_visible))
+        visible = names[start_idx:start_idx + max_visible]
+        total_w = len(visible) * card_w + (len(visible) - 1) * gap
+        start_x = content_rect.left + (content_rect.width - total_w) // 2
+        for i, name in enumerate(visible):
+            idx = start_idx + i
+            rect = pygame.Rect(start_x + i * (card_w + gap), content_rect.top, card_w, card_h)
+            self._draw_character_card(surface, rect, name, scale, selected=(idx == self.target_index))
+        arrow_font = ui.font(20, scale)
+        if start_idx > 0:
+            label = arrow_font.render("<", True, ui.ACCENT)
+            surface.blit(label, label.get_rect(midright=(start_x - int(6 * scale), content_rect.top + card_h // 2)))
+        if start_idx + len(visible) < len(names):
+            label = arrow_font.render(">", True, ui.ACCENT)
+            surface.blit(label, label.get_rect(midleft=(start_x + total_w + int(6 * scale), content_rect.top + card_h // 2)))
 
     def _draw_option_list(self, surface, content_rect, body_font, labels, selected_index):
         scale = ui.scale_factor(self.screen)
