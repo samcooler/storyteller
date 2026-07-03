@@ -34,6 +34,9 @@ ARCHETYPES = [
     "vegan chef with strong opinions about cheese",
     "rock climber who talks about 'sending' too much",
     "furry with a very normal day job",
+    "raw milk enthusiast with a lot of opinions",
+    "person who met their metamour on a raid night",
+    "tarot reader who overcharges everyone including their partners",
 ]
 
 VENUES = [
@@ -84,6 +87,14 @@ GENERIC_CARDS = [
      "blurb": "Talk through a jealous feeling with {target}.", "trust": (0, 12), "spark": (-4, 6)},
     {"id": "cohabit", "name": "Move In Together", "kind": "bond",
      "blurb": "Take the cohabitating leap with {target}.", "trust": (-10, 18), "spark": (-10, 6)},
+    {"id": "trash_tv", "name": "Watch Trash TV", "kind": "bond",
+     "blurb": "Marathon something truly terrible with {target}.", "trust": (0, 10), "spark": (-2, 8)},
+    {"id": "chore_wheel_intervention", "name": "Chore Wheel Intervention", "kind": "bond",
+     "blurb": "Stage a formal intervention about the chore wheel with {target}.", "trust": (-8, 14), "spark": (-6, 2)},
+    {"id": "metamour_appreciation", "name": "Metamour Appreciation", "kind": "bond",
+     "blurb": "Tell {target} they're an incredible metamour, unprompted.", "trust": (4, 16), "spark": (-2, 6)},
+    {"id": "group_chat_add", "name": "Add to the Group Chat", "kind": "bond",
+     "blurb": "Add {target} to the group chat named something unhinged.", "trust": (2, 10), "spark": (0, 6)},
 
     {"id": "flirt", "name": "Flirt", "kind": "court",
      "blurb": "Turn up the charm on {target}.", "interest": (5, 25)},
@@ -93,9 +104,38 @@ GENERIC_CARDS = [
      "blurb": "Don't text {target} back for a few days.", "interest": (-25, 5)},
     {"id": "ask_out", "name": "Ask Them Out", "kind": "court",
      "blurb": "Suggest an actual date with {target}.", "interest": (0, 30)},
+    {"id": "voice_memo", "name": "Send a Voice Memo", "kind": "court",
+     "blurb": "Send {target} an unnecessarily long voice memo.", "interest": (-10, 25)},
+    {"id": "overanalyze_texts", "name": "Overanalyze Their Texts", "kind": "court",
+     "blurb": "Spend an hour overanalyzing {target}'s last text.", "interest": (-15, 15)},
+    {"id": "meet_the_metamours", "name": "Meet the Metamours", "kind": "court",
+     "blurb": "Invite {target} to meet the rest of the polycule.", "interest": (-10, 30)},
+
+    {"id": "trauma_dump", "name": "Overshares a Trauma Dump", "kind": "flag",
+     "blurb": "{target} launches into a trauma dump on date one.", "interest": (-30, 10)},
+    {"id": "still_lives_with_ex", "name": "Still Lives With Their Ex", "kind": "flag",
+     "blurb": "{target} mentions they still live with their ex. 'It's complicated.'", "interest": (-30, 5)},
+    {"id": "crypto_pitch", "name": "Won't Stop Talking About Crypto", "kind": "flag",
+     "blurb": "{target} corners you about their new coin.", "interest": (-25, 5)},
+    {"id": "not_like_other_people", "name": "'I'm Not Like Other People'", "kind": "flag",
+     "blurb": "{target} says 'I'm not like other people' completely unironically.", "interest": (-28, 8)},
+    {"id": "no_job_ever", "name": "Has Never Had a Job", "kind": "flag",
+     "blurb": "{target} casually mentions they've never had a job. Trust fund? Vibes? Unclear.", "interest": (-25, 12)},
+    {"id": "reads_consent_forms", "name": "Actually Reads the Consent Forms", "kind": "flag",
+     "blurb": "{target} reads the whole consent form before signing anything.", "interest": (12, 32)},
+    {"id": "remembers_order", "name": "Remembers Your Coffee Order", "kind": "flag",
+     "blurb": "{target} remembers your coffee order from three weeks ago.", "interest": (10, 30)},
+    {"id": "has_a_therapist", "name": "Has a Therapist and Uses Them", "kind": "flag",
+     "blurb": "{target} mentions their therapist like a normal, healthy person.", "interest": (12, 32)},
+    {"id": "checks_in", "name": "Checks In After a Hard Day", "kind": "flag",
+     "blurb": "{target} texts just to check in after a rough day.", "interest": (10, 28)},
+    {"id": "splits_the_bill", "name": "Splits the Bill Without Being Asked", "kind": "flag",
+     "blurb": "{target} splits the bill before you can even reach for your wallet.", "interest": (8, 26)},
 
     {"id": "go_out", "name": "Go Out", "kind": "meet",
      "blurb": "Head out to {venue} and see who's around."},
+    {"id": "dating_app", "name": "Match Online", "kind": "meet",
+     "blurb": "Swipe through dating apps hoping for a connection."},
 
     {"id": "house_meeting", "name": "House Meeting", "kind": "group",
      "blurb": "Call a meeting to hash things out.", "harmony": (-10, 20), "chaos": (-15, 10)},
@@ -105,29 +145,106 @@ GENERIC_CARDS = [
      "blurb": "Try to sync everyone's calendars.", "harmony": (-5, 10), "chaos": (-20, 5)},
     {"id": "group_trip", "name": "Plan a Group Trip", "kind": "group",
      "blurb": "Propose a trip for the whole cule.", "harmony": (-8, 18), "chaos": (0, 10)},
+
+    {"id": "mercury_retrograde", "name": "Mercury Retrograde", "kind": "chaos",
+     "blurb": "Mercury goes retrograde and everyone's texts start crossing.",
+     "harmony": (-15, 5), "chaos": (10, 30), "stress": (5, 20)},
+    {"id": "ex_shows_up", "name": "An Ex Shows Up at Brunch", "kind": "chaos",
+     "blurb": "Someone's ex shows up at brunch. Unannounced. Uninvited.",
+     "harmony": (-20, 0), "chaos": (15, 30), "stress": (8, 22)},
+    {"id": "group_chat_screenshot", "name": "The Group Chat Gets Screenshotted", "kind": "chaos",
+     "blurb": "Someone screenshots the group chat and it gets back to the wrong person.",
+     "harmony": (-25, -5), "chaos": (15, 35), "stress": (10, 25)},
+    {"id": "water_heater_dies", "name": "The Water Heater Dies", "kind": "chaos",
+     "blurb": "The water heater dies and everyone has Opinions about the fix.",
+     "harmony": (-15, 10), "chaos": (5, 20), "stress": (5, 15)},
+    {"id": "surprise_metamour", "name": "A New Metamour Appears Unannounced", "kind": "chaos",
+     "blurb": "Someone brings a new partner to game night without a heads up.",
+     "harmony": (-20, 5), "chaos": (10, 25), "stress": (5, 18)},
+    {"id": "full_moon", "name": "Full Moon Energy", "kind": "chaos",
+     "blurb": "It's a full moon and everyone is unhinged for absolutely no reason.",
+     "harmony": (-10, 15), "chaos": (10, 25)},
 ]
 
 ARCHETYPE_CARDS = {
-    "astrology-pilled barista": {"id": "chart_reading", "name": "Read Their Chart", "kind": "bond",
-                                  "blurb": "Insist on doing {target}'s birth chart.", "trust": (-4, 10), "spark": (2, 10)},
-    "crypto bro who found ethical non-monogamy on a podcast": {"id": "pitch_coin", "name": "Pitch a Coin", "kind": "bond",
-                                  "blurb": "Explain your new relationship token to {target}.", "trust": (-14, 4), "spark": (-2, 8)},
-    "theater kid who never left the theater": {"id": "monologue", "name": "Perform a Monologue", "kind": "bond",
-                                  "blurb": "Perform a dramatic monologue at {target}.", "trust": (-4, 8), "spark": (0, 14)},
-    "crunchy homesteader with three chickens named after exes": {"id": "name_chicken", "name": "Name a Chicken", "kind": "bond",
-                                  "blurb": "Name a new chicken after {target}.", "trust": (2, 12), "spark": (-2, 6)},
-    "spreadsheet person who tracks feelings in a pivot table": {"id": "pivot_table", "name": "Share the Pivot Table", "kind": "bond",
-                                  "blurb": "Show {target} the feelings spreadsheet.", "trust": (-6, 14), "spark": (-4, 4)},
-    "yoga instructor who over-shares in savasana": {"id": "savasana", "name": "Guided Savasana", "kind": "bond",
-                                  "blurb": "Lead {target} through an over-sharing savasana.", "trust": (0, 12), "spark": (-2, 8)},
-    "DM who's still mad you missed session 4": {"id": "campaign_arc", "name": "Write Them Into the Campaign", "kind": "bond",
-                                  "blurb": "Write {target} into the D&D campaign.", "trust": (-2, 10), "spark": (0, 10)},
-    "vegan chef with strong opinions about cheese": {"id": "cashew_cheese", "name": "Serve Cashew Cheese", "kind": "bond",
-                                  "blurb": "Make {target} try the cashew cheese.", "trust": (-6, 8), "spark": (0, 10)},
-    "rock climber who talks about 'sending' too much": {"id": "send_it", "name": "Take Them Climbing", "kind": "bond",
-                                  "blurb": "Take {target} climbing and narrate the whole time.", "trust": (-4, 10), "spark": (2, 12)},
-    "furry with a very normal day job": {"id": "fursona", "name": "Introduce the Fursona", "kind": "bond",
-                                  "blurb": "Introduce {target} to your fursona.", "trust": (-8, 12), "spark": (0, 12)},
+    "astrology-pilled barista": [
+        {"id": "chart_reading", "name": "Read Their Chart", "kind": "bond",
+         "blurb": "Insist on doing {target}'s birth chart.", "trust": (-4, 10), "spark": (2, 10)},
+        {"id": "mercury_blame", "name": "Blame Mercury", "kind": "bond",
+         "blurb": "Explain to {target} that the fight was actually Mercury's fault.", "trust": (-2, 12), "spark": (-4, 6)},
+    ],
+    "crypto bro who found ethical non-monogamy on a podcast": [
+        {"id": "pitch_coin", "name": "Pitch a Coin", "kind": "bond",
+         "blurb": "Explain your new relationship token to {target}.", "trust": (-14, 4), "spark": (-2, 8)},
+        {"id": "podcast_quote", "name": "Quote the Podcast", "kind": "bond",
+         "blurb": "Quote the ethical non-monogamy podcast at {target}, again.", "trust": (-10, 6), "spark": (-2, 6)},
+    ],
+    "theater kid who never left the theater": [
+        {"id": "monologue", "name": "Perform a Monologue", "kind": "bond",
+         "blurb": "Perform a dramatic monologue at {target}.", "trust": (-4, 8), "spark": (0, 14)},
+        {"id": "blocking_notes", "name": "Give Blocking Notes", "kind": "bond",
+         "blurb": "Give {target} unsolicited blocking notes during a normal conversation.", "trust": (-8, 6), "spark": (-2, 10)},
+    ],
+    "crunchy homesteader with three chickens named after exes": [
+        {"id": "name_chicken", "name": "Name a Chicken", "kind": "bond",
+         "blurb": "Name a new chicken after {target}.", "trust": (2, 12), "spark": (-2, 6)},
+        {"id": "raw_honey_gift", "name": "Gift Raw Honey", "kind": "bond",
+         "blurb": "Gift {target} a jar of suspiciously unlabeled raw honey.", "trust": (0, 14), "spark": (-2, 4)},
+    ],
+    "spreadsheet person who tracks feelings in a pivot table": [
+        {"id": "pivot_table", "name": "Share the Pivot Table", "kind": "bond",
+         "blurb": "Show {target} the feelings spreadsheet.", "trust": (-6, 14), "spark": (-4, 4)},
+        {"id": "conditional_formatting", "name": "Add Conditional Formatting", "kind": "bond",
+         "blurb": "Color-code {target}'s row in the feelings spreadsheet red.", "trust": (-10, 6), "spark": (-4, 4)},
+    ],
+    "yoga instructor who over-shares in savasana": [
+        {"id": "savasana", "name": "Guided Savasana", "kind": "bond",
+         "blurb": "Lead {target} through an over-sharing savasana.", "trust": (0, 12), "spark": (-2, 8)},
+        {"id": "chakra_read", "name": "Read Their Chakras", "kind": "bond",
+         "blurb": "Tell {target} their heart chakra seems blocked.", "trust": (-6, 10), "spark": (-2, 6)},
+    ],
+    "DM who's still mad you missed session 4": [
+        {"id": "campaign_arc", "name": "Write Them Into the Campaign", "kind": "bond",
+         "blurb": "Write {target} into the D&D campaign.", "trust": (-2, 10), "spark": (0, 10)},
+        {"id": "session_4_callback", "name": "Bring Up Session 4 Again", "kind": "bond",
+         "blurb": "Bring up how {target} missed session 4. Still not over it.", "trust": (-10, 4), "spark": (-4, 4)},
+    ],
+    "vegan chef with strong opinions about cheese": [
+        {"id": "cashew_cheese", "name": "Serve Cashew Cheese", "kind": "bond",
+         "blurb": "Make {target} try the cashew cheese.", "trust": (-6, 8), "spark": (0, 10)},
+        {"id": "dairy_lecture", "name": "Deliver the Dairy Lecture", "kind": "bond",
+         "blurb": "Deliver the full lecture on dairy to {target}, unprompted.", "trust": (-12, 2), "spark": (-4, 4)},
+    ],
+    "rock climber who talks about 'sending' too much": [
+        {"id": "send_it", "name": "Take Them Climbing", "kind": "bond",
+         "blurb": "Take {target} climbing and narrate the whole time.", "trust": (-4, 10), "spark": (2, 12)},
+        {"id": "beta_unsolicited", "name": "Give Unsolicited Beta", "kind": "bond",
+         "blurb": "Give {target} unsolicited beta on an entirely unrelated life problem.", "trust": (-8, 6), "spark": (-2, 8)},
+    ],
+    "furry with a very normal day job": [
+        {"id": "fursona", "name": "Introduce the Fursona", "kind": "bond",
+         "blurb": "Introduce {target} to your fursona.", "trust": (-8, 12), "spark": (0, 12)},
+        {"id": "con_photos", "name": "Show Con Photos", "kind": "bond",
+         "blurb": "Show {target} photos from the last con at work, on the work laptop.", "trust": (-6, 10), "spark": (-2, 8)},
+    ],
+    "raw milk enthusiast with a lot of opinions": [
+        {"id": "raw_milk_pitch", "name": "Explain Raw Milk", "kind": "bond",
+         "blurb": "Explain to {target}, at length, why raw milk changed your life.", "trust": (-10, 6), "spark": (-2, 6)},
+        {"id": "farmer_intro", "name": "Introduce Them to Your Farmer", "kind": "bond",
+         "blurb": "Introduce {target} to 'your' farmer like it's a serious relationship.", "trust": (-4, 10), "spark": (0, 8)},
+    ],
+    "person who met their metamour on a raid night": [
+        {"id": "raid_night_invite", "name": "Invite to Raid Night", "kind": "bond",
+         "blurb": "Invite {target} to raid night to meet everyone properly.", "trust": (0, 12), "spark": (0, 10)},
+        {"id": "loot_drama", "name": "Relitigate Loot Drama", "kind": "bond",
+         "blurb": "Relitigate old guild loot drama with {target} for no reason.", "trust": (-8, 8), "spark": (-4, 6)},
+    ],
+    "tarot reader who overcharges everyone including their partners": [
+        {"id": "pull_a_card", "name": "Pull a Card on Them", "kind": "bond",
+         "blurb": "Pull a tarot card on {target} mid-argument.", "trust": (-6, 10), "spark": (-2, 8)},
+        {"id": "invoice_partner", "name": "Send an Invoice", "kind": "bond",
+         "blurb": "Actually send {target} an invoice for the reading.", "trust": (-14, 2), "spark": (-4, 4)},
+    ],
 }
 
 COMMIT_CARD = {"id": "commit", "name": "Ask Them In", "kind": "commit",
@@ -149,7 +266,7 @@ class Character:
         deck = list(GENERIC_CARDS)
         extra = ARCHETYPE_CARDS.get(self.archetype)
         if extra:
-            deck = deck + [extra, extra]
+            deck = deck + list(extra)
         return deck
 
 
@@ -238,7 +355,7 @@ class PolyculeSimulator(Game):
         for card in member.deck():
             if card["kind"] in ("bond", "date") and not others and not my_prospects:
                 continue
-            if card["kind"] == "court" and not my_prospects:
+            if card["kind"] in ("court", "flag") and not my_prospects:
                 continue
             if card["kind"] == "meet" and len(my_prospects) >= MAX_PROSPECTS_PER_MEMBER:
                 continue
@@ -262,7 +379,7 @@ class PolyculeSimulator(Game):
             return [m.name for m in self.members if m.name != member.name]
         if card["kind"] == "date":
             return [m.name for m in self.members if m.name != member.name] + list(my_prospects.keys())
-        if card["kind"] == "court":
+        if card["kind"] in ("court", "flag"):
             return list(my_prospects.keys())
         if card["kind"] == "commit":
             return [n for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD]
@@ -320,7 +437,7 @@ class PolyculeSimulator(Game):
             rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
             rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
             self.result_text = [flavor, f"Trust {trust_d:+d}, Spark {spark_d:+d}."]
-        elif card["kind"] == "court":
+        elif card["kind"] in ("court", "flag"):
             prospect = self.prospects[target_name]
             lo, hi = card["interest"]
             delta = self._roll(lo, hi)
@@ -344,14 +461,21 @@ class PolyculeSimulator(Game):
             self.members.append(new_member)
             self.get_rel(member.name, new_member.name).update({"trust": start, "spark": start})
             self.result_text = [flavor, f"{new_member.name} joins the cule for real!"]
-        elif card["kind"] == "group":
+        elif card["kind"] in ("group", "chaos"):
             h_lo, h_hi = card["harmony"]
             c_lo, c_hi = card["chaos"]
             h_d = self._roll(h_lo, h_hi)
             c_d = self._roll(c_lo, c_hi)
             self.harmony = max(0, min(100, self.harmony + h_d))
             self.chaos = max(0, min(100, self.chaos + c_d))
-            self.result_text = [flavor, f"Harmony {h_d:+d}, Chaos {c_d:+d}."]
+            lines = [flavor, f"Harmony {h_d:+d}, Chaos {c_d:+d}."]
+            if "stress" in card:
+                victim = self.rng.choice(self.members)
+                s_lo, s_hi = card["stress"]
+                s_d = self._roll(s_lo, s_hi)
+                victim.statuses["stress"] = max(0, min(100, victim.statuses["stress"] + s_d))
+                lines.append(f"{victim.name}'s stress {s_d:+d}.")
+            self.result_text = lines
         self._spend_energy()
 
     def _negotiate_date(self, target_name, day):
@@ -497,7 +621,7 @@ class PolyculeSimulator(Game):
                 card = options[self.hand_index]
                 if card["kind"] == "end":
                     self._end_week()
-                elif card["kind"] in ("bond", "court", "commit", "date"):
+                elif card["kind"] in ("bond", "court", "commit", "date", "flag"):
                     targets = self._card_targets(card)
                     if not targets:
                         self.result_text = [f"{card['name']} has no one left to target. It fizzles."]
