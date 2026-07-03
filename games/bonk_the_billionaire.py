@@ -30,7 +30,7 @@ class Mole:
 
 class BonkTheBillionaire(Game):
     name = "Bonk the Billionaire"
-    description = "They keep popping up. Bonk them back down."
+    description = "They keep popping up. Press 1-9 to bonk them back down."
 
     HOLES = 9
     COLS = 3
@@ -60,13 +60,30 @@ class BonkTheBillionaire(Game):
             m.bonked = False
         self.game_over = False
 
+    KEYS = [
+        pygame.K_1, pygame.K_2, pygame.K_3,
+        pygame.K_4, pygame.K_5, pygame.K_6,
+        pygame.K_7, pygame.K_8, pygame.K_9,
+    ]
+
     def handle_event(self, event):
-        if event.type == pygame.MOUSEBUTTONDOWN and not self.game_over:
-            for m in self.moles:
-                if m.up and not m.bonked and m.rect.collidepoint(event.pos):
-                    m.bonked = True
-                    m.timer = 0.15
-                    self.score += 1
+        if self.game_over:
+            return
+        index = None
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            for i, m in enumerate(self.moles):
+                if m.rect.collidepoint(event.pos):
+                    index = i
+                    break
+        elif event.type == pygame.KEYDOWN and event.key in self.KEYS:
+            index = self.KEYS.index(event.key)
+
+        if index is not None:
+            m = self.moles[index]
+            if m.up and not m.bonked:
+                m.bonked = True
+                m.timer = 0.15
+                self.score += 1
 
     def update(self, dt):
         if self.game_over:
@@ -91,9 +108,11 @@ class BonkTheBillionaire(Game):
         font = pygame.font.SysFont(None, 40)
         small = pygame.font.SysFont(None, 26)
 
-        for m in self.moles:
+        for i, m in enumerate(self.moles):
             hole_color = (20, 20, 25)
             pygame.draw.ellipse(surface, hole_color, m.rect.inflate(20, 10))
+            key_label = small.render(str(i + 1), True, (90, 90, 100))
+            surface.blit(key_label, key_label.get_rect(center=(m.rect.centerx, m.rect.bottom + 16)))
             if m.up:
                 color = (60, 200, 90) if m.bonked else (200, 60, 60)
                 pygame.draw.rect(surface, color, m.rect, border_radius=8)
