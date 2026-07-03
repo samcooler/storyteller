@@ -1,5 +1,6 @@
 """Polycule Simulator: a no-combat, looping JRPG-menu relationship sim."""
 
+import math
 import random
 
 import pygame
@@ -67,9 +68,12 @@ class PolyculeSimulator(Game):
     name = "Polycule Simulator"
     description = "Navigate your polycule, day by day. 1/2 to choose, Enter to confirm."
 
+    PLAYER_SEED = 1337
+
     def __init__(self, screen):
         super().__init__(screen)
         self.rng = random.Random()
+        self.node_pos = {}
 
     def reset(self):
         self.day = 1
@@ -84,6 +88,7 @@ class PolyculeSimulator(Game):
         self.selected = 0
         self.pending_effects = None
         self.current_event_kind = None
+        self.node_pos = {}
 
     def _new_stranger(self):
         for _ in range(10):
@@ -289,8 +294,82 @@ class PolyculeSimulator(Game):
                 self.day += 1
                 self.state = "idle"
 
+    def _network_geometry(self):
+        w, h = self.screen.get_size()
+        panel_w = 320
+        panel = pygame.Rect(10, 10, panel_w, h - 20)
+        diagram = pygame.Rect(panel.left + 10, panel.top + 96, panel.width - 20, panel.height - 106)
+        center = diagram.center
+        max_r = min(diagram.width, diagram.height) / 2 - 26
+        min_r = 48
+        return panel, diagram, center, min_r, max_r
+
+    @staticmethod
+    def _strength(partner):
+        return max(0.0, min(1.0, (partner.trust + partner.spark) / 200.0))
+
+    @staticmethod
+    def _lerp_color(c0, c1, t):
+        return tuple(int(c0[i] + (c1[i] - c0[i]) * t) for i in range(3))
+
+    def _bond_color(self, t):
+        return self._lerp_color((90, 110, 160), (255, 120, 170), t)
+
     def update(self, dt):
-        pass
+        _, _, center, min_r, max_r = self._network_geometry()
+        n = len(self.partners)
+        for i, partner in enumerate(self.partners):
+            angle = (i / n) * 2 * math.pi - math.pi / 2 if n else 0
+            strength = self._strength(partner)
+            radius = max_r - strength * (max_r - min_r)
+            target = (center[0] + radius * math.cos(angle), center[1] + radius * math.sin(angle))
+            cur = self.node_pos.get(partner.name, target)
+            rate = min(1.0, dt * 2.5)
+            self.node_pos[partner.name] = (
+                cur[0] + (target[0] - cur[0]) * rate,
+                cur[1] + (target[1] - cur[1]) * rate,
+            )
+
+    def _draw_network(self, surface, panel, diagram, center):
+        n = len(self.partners)
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                a, b = self.partners[i], self.partners[j]
+                pa, pb = self.node_pos.get(a.name, center), self.node_pos.get(b.name, center)
+                t = self.harmony / 100.0
+                color = self._lerp_color((70, 70, 90), (150, 210, 160), t)
+                width = 1 + round(t * 4)
+                pygame.draw.line(surface, color, pa, pb, width)
+
+        for partner in self.partners:
+            pos = self.node_pos.get(partner.name, center)
+            t = self._strength(partner)
+            color = self._bond_color(t)
+            width = 1 + round(t * 7)
+            pygame.draw.line(surface, color, center, pos, width)
+
+        player_r = 20
+        pygame.draw.circle(surface, (255, 255, 255), center, player_r + 3)
+        pixel_portrait.draw_bust(
+            surface,
+            pygame.Rect(center[0] - player_r, center[1] - player_r, player_r * 2, player_r * 2),
+            self.PLAYER_SEED,
+        )
+
+        node_r = 16
+        for partner in self.partners:
+            pos = self.node_pos.get(partner.name, center)
+            t = self._strength(partner)
+            ring_color = self._bond_color(t)
+            pygame.draw.circle(surface, ring_color, pos, node_r + 3)
+            pixel_portrait.draw_bust(
+                surface,
+                pygame.Rect(int(pos[0]) - node_r, int(pos[1]) - node_r, node_r * 2, node_r * 2),
+                partner.seed,
+            )
+            label = pygame.font.SysFont(None, 18).render(partner.name, True, ui.TEXT_COLOR)
+            surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + node_r + 4)))
 
     def draw(self, surface):
         surface.fill((26, 18, 32))
@@ -299,32 +378,27 @@ class PolyculeSimulator(Game):
         body_font = pygame.font.SysFont(None, 26)
         small_font = pygame.font.SysFont(None, 20)
 
-        sidebar_w = 160
-        sidebar = pygame.Rect(10, 10, sidebar_w, h - 20)
-        ui.draw_panel(surface, sidebar)
-        y = sidebar.top + 12
-        surface.blit(small_font.render(f"Day {self.day}", True, ui.TEXT_COLOR), (sidebar.left + 10, y))
+        panel, diagram, center, min_r, max_r = self._network_geometry()
+        ui.draw_panel(surface, panel)
+        y = panel.top + 12
+        surface.blit(small_font.render(f"Day {self.day}", True, ui.TEXT_COLOR), (panel.left + 10, y))
         y += 22
-        surface.blit(small_font.render("Household", True, ui.DIM_TEXT), (sidebar.left + 10, y))
+        surface.blit(small_font.render("Household", True, ui.DIM_TEXT), (panel.left + 10, y))
         y += 18
-        ui.draw_bar(surface, pygame.Rect(sidebar.left + 10, y, sidebar_w - 20, 10), self.harmony, 100, (120, 220, 140))
+        ui.draw_bar(surface, pygame.Rect(panel.left + 10, y, panel.width - 20, 10), self.harmony, 100, (120, 220, 140))
         y += 14
-        surface.blit(small_font.render("Harmony", True, ui.DIM_TEXT), (sidebar.left + 10, y))
+        surface.blit(small_font.render("Harmony", True, ui.DIM_TEXT), (panel.left + 10, y))
         y += 22
-        ui.draw_bar(surface, pygame.Rect(sidebar.left + 10, y, sidebar_w - 20, 10), self.chaos, 100, (220, 120, 120))
+        ui.draw_bar(surface, pygame.Rect(panel.left + 10, y, panel.width - 20, 10), self.chaos, 100, (220, 120, 120))
         y += 14
-        surface.blit(small_font.render("Chaos", True, ui.DIM_TEXT), (sidebar.left + 10, y))
-        y += 28
+        surface.blit(small_font.render("Chaos", True, ui.DIM_TEXT), (panel.left + 10, y))
 
-        for partner in self.partners:
-            portrait_rect = pygame.Rect(sidebar.left + 10, y, 40, 40)
-            pixel_portrait.draw_bust(surface, portrait_rect, partner.seed)
-            surface.blit(small_font.render(partner.name, True, ui.TEXT_COLOR), (portrait_rect.right + 8, y))
-            ui.draw_bar(surface, pygame.Rect(portrait_rect.right + 8, y + 18, 60, 8), partner.trust, 100, (140, 180, 240))
-            ui.draw_bar(surface, pygame.Rect(portrait_rect.right + 8, y + 28, 60, 8), partner.spark, 100, (240, 140, 190))
-            y += 48
+        if not self.partners:
+            hint = small_font.render("Your polycule will appear here as you meet people.", True, ui.DIM_TEXT)
+            surface.blit(hint, hint.get_rect(center=diagram.center))
+        self._draw_network(surface, panel, diagram, center)
 
-        main_rect = pygame.Rect(sidebar.right + 10, 10, w - sidebar_w - 30, h - 20)
+        main_rect = pygame.Rect(panel.right + 10, 10, w - panel.width - 30, h - 20)
         ui.draw_panel(surface, main_rect)
 
         title = title_font.render(self.name, True, ui.ACCENT)
