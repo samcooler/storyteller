@@ -1,15 +1,28 @@
+import os
 import sys
 
 import pygame
 
 from games import GAMES
+from games import ui
 
-SCREEN_SIZE = (800, 480)  # matches the official 7" Raspberry Pi touchscreen
 FPS = 60
 
 BG = (18, 18, 24)
 FG = (240, 240, 240)
 ACCENT = (255, 200, 60)
+
+
+def create_screen():
+    """Fill whatever display we're run on (Pi touchscreen, 4K monitor, laptop...).
+
+    --windowed forces a smaller dev-friendly window instead.
+    """
+    if os.environ.get("SDL_VIDEODRIVER") == "dummy":
+        return pygame.display.set_mode((1280, 720))
+    if "--windowed" in sys.argv:
+        return pygame.display.set_mode((1280, 720))
+    return pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
 
 class Menu:
@@ -30,35 +43,36 @@ class Menu:
 
     def draw(self, surface):
         surface.fill(BG)
-        title_font = pygame.font.SysFont(None, 64)
-        item_font = pygame.font.SysFont(None, 40)
-        hint_font = pygame.font.SysFont(None, 24)
+        scale = ui.scale_factor(surface)
+        title_font = ui.font(64, scale)
+        item_font = ui.font(40, scale)
+        hint_font = ui.font(24, scale)
 
+        w, h = surface.get_size()
         title = title_font.render("Silly Game Machine", True, ACCENT)
-        surface.blit(title, title.get_rect(center=(surface.get_width() // 2, 60)))
+        surface.blit(title, title.get_rect(center=(w // 2, int(60 * scale))))
 
-        start_y = 150
+        start_y = int(150 * scale)
+        spacing = int(50 * scale)
         for i, game_cls in enumerate(self.games):
             color = ACCENT if i == self.selected else FG
             label = item_font.render(game_cls.name, True, color)
-            surface.blit(label, label.get_rect(center=(surface.get_width() // 2, start_y + i * 50)))
+            surface.blit(label, label.get_rect(center=(w // 2, start_y + i * spacing)))
 
         desc = self.games[self.selected].description
         if desc:
             desc_label = hint_font.render(desc, True, FG)
-            surface.blit(desc_label, desc_label.get_rect(
-                center=(surface.get_width() // 2, surface.get_height() - 60)))
+            surface.blit(desc_label, desc_label.get_rect(center=(w // 2, h - int(60 * scale))))
 
         hint = hint_font.render("Arrows to choose, Enter to play, Esc to quit", True, (150, 150, 150))
-        surface.blit(hint, hint.get_rect(center=(surface.get_width() // 2, surface.get_height() - 25)))
+        surface.blit(hint, hint.get_rect(center=(w // 2, h - int(25 * scale))))
 
 
 def main():
     pygame.init()
-    fullscreen = "--fullscreen" in sys.argv
-    flags = pygame.FULLSCREEN if fullscreen else 0
-    screen = pygame.display.set_mode(SCREEN_SIZE, flags)
+    screen = create_screen()
     pygame.display.set_caption("Silly Game Machine")
+    pygame.mouse.set_visible(False)
     clock = pygame.time.Clock()
 
     menu = Menu(screen, GAMES)

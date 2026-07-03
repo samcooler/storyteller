@@ -2,6 +2,7 @@ import random
 
 import pygame
 
+from . import ui
 from .base import Game
 
 WHACK_TIME = 0.9
@@ -38,6 +39,8 @@ class BonkTheBillionaire(Game):
     def __init__(self, screen):
         super().__init__(screen)
         w, h = screen.get_size()
+        scale = ui.scale_factor(screen)
+        hole_size = int(70 * scale)
         margin_x, margin_y = w // 6, h // 5
         cell_w = (w - 2 * margin_x) // self.COLS
         cell_h = (h - 2 * margin_y) // (self.HOLES // self.COLS)
@@ -47,7 +50,7 @@ class BonkTheBillionaire(Game):
             row = i // self.COLS
             cx = margin_x + col * cell_w + cell_w // 2
             cy = margin_y + row * cell_h + cell_h // 2
-            self.moles.append(Mole(pygame.Rect(0, 0, 70, 70)))
+            self.moles.append(Mole(pygame.Rect(0, 0, hole_size, hole_size)))
             self.moles[-1].rect.center = (cx, cy)
         self.reset()
 
@@ -105,23 +108,25 @@ class BonkTheBillionaire(Game):
 
     def draw(self, surface):
         surface.fill((30, 30, 40))
-        font = pygame.font.SysFont(None, 40)
-        small = pygame.font.SysFont(None, 26)
+        scale = ui.scale_factor(surface)
+        font = ui.font(40, scale)
+        small = ui.font(26, scale)
+        inflate = int(20 * scale), int(10 * scale)
 
         for i, m in enumerate(self.moles):
             hole_color = (20, 20, 25)
-            pygame.draw.ellipse(surface, hole_color, m.rect.inflate(20, 10))
+            pygame.draw.ellipse(surface, hole_color, m.rect.inflate(*inflate))
             key_label = small.render(str(i + 1), True, (90, 90, 100))
-            surface.blit(key_label, key_label.get_rect(center=(m.rect.centerx, m.rect.bottom + 16)))
+            surface.blit(key_label, key_label.get_rect(center=(m.rect.centerx, int(m.rect.bottom + 16 * scale))))
             if m.up:
                 color = (60, 200, 90) if m.bonked else (200, 60, 60)
-                pygame.draw.rect(surface, color, m.rect, border_radius=8)
+                pygame.draw.rect(surface, color, m.rect, border_radius=max(2, int(8 * scale)))
                 label = small.render("$", True, (255, 255, 255))
                 surface.blit(label, label.get_rect(center=m.rect.center))
 
         hud = font.render(f"Score: {self.score}   Time: {int(self.time_left)}", True, (255, 255, 255))
-        surface.blit(hud, (20, 15))
+        surface.blit(hud, (int(20 * scale), int(15 * scale)))
 
         if self.game_over:
             msg = font.render(f"Wealth redistributed: {self.score}! Press ESC for menu.", True, (255, 220, 100))
-            surface.blit(msg, msg.get_rect(center=(surface.get_width() // 2, surface.get_height() - 40)))
+            surface.blit(msg, msg.get_rect(center=(surface.get_width() // 2, surface.get_height() - int(40 * scale))))
