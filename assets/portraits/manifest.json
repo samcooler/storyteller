@@ -1,0 +1,427 @@
+[
+  {
+    "file": "younger_01.png",
+    "source": "younger",
+    "age": "22",
+    "skin_tone": "Light",
+    "sex": "Male",
+    "hair_style": "Short messy black curls"
+  },
+  {
+    "file": "younger_02.png",
+    "source": "younger",
+    "age": "24",
+    "skin_tone": "Light-medium",
+    "sex": "Female",
+    "hair_style": "Black messy bun with blue streaks"
+  },
+  {
+    "file": "younger_03.png",
+    "source": "younger",
+    "age": "33",
+    "skin_tone": "Dark",
+    "sex": "Male",
+    "hair_style": "Bald, shaved head"
+  },
+  {
+    "file": "younger_04.png",
+    "source": "younger",
+    "age": "23",
+    "skin_tone": "Light",
+    "sex": "Female",
+    "hair_style": "Short wavy pink bob"
+  },
+  {
+    "file": "younger_05.png",
+    "source": "younger",
+    "age": "29",
+    "skin_tone": "Medium-tan",
+    "sex": "Male",
+    "hair_style": "Long locs in topknot"
+  },
+  {
+    "file": "younger_06.png",
+    "source": "younger",
+    "age": "27",
+    "skin_tone": "Dark",
+    "sex": "Female",
+    "hair_style": "Large afro"
+  },
+  {
+    "file": "younger_07.png",
+    "source": "younger",
+    "age": "25",
+    "skin_tone": "Light-medium",
+    "sex": "Non-binary",
+    "hair_style": "Purple undercut with shaved side"
+  },
+  {
+    "file": "younger_08.png",
+    "source": "younger",
+    "age": "24",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "hair_style": "Green hair with bangs, beanie"
+  },
+  {
+    "file": "younger_09.png",
+    "source": "younger",
+    "age": "30",
+    "skin_tone": "Medium",
+    "sex": "Male",
+    "hair_style": "Short curly hair, light beard"
+  },
+  {
+    "file": "younger_10.png",
+    "source": "younger",
+    "age": "22",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "hair_style": "Blue space buns with long strands"
+  },
+  {
+    "file": "younger_11.png",
+    "source": "younger",
+    "age": "21",
+    "skin_tone": "Light",
+    "sex": "Non-binary",
+    "hair_style": "Green buzz cut"
+  },
+  {
+    "file": "younger_12.png",
+    "source": "younger",
+    "age": "26",
+    "skin_tone": "Medium-tan",
+    "sex": "Female",
+    "hair_style": "Long curly dark hair"
+  },
+  {
+    "file": "younger_13.png",
+    "source": "younger",
+    "age": "28",
+    "skin_tone": "Light-medium",
+    "sex": "Male",
+    "hair_style": "Long wavy hair, mustache, glasses"
+  },
+  {
+    "file": "younger_14.png",
+    "source": "younger",
+    "age": "25",
+    "skin_tone": "Medium",
+    "sex": "Non-binary",
+    "hair_style": "Half-shaved white side-swept hair"
+  },
+  {
+    "file": "younger_15.png",
+    "source": "younger",
+    "age": "24",
+    "skin_tone": "Light",
+    "sex": "Female",
+    "hair_style": "Short spiky orange hair"
+  },
+  {
+    "file": "younger_16.png",
+    "source": "younger",
+    "age": "31",
+    "skin_tone": "Light",
+    "sex": "Male",
+    "hair_style": "Curled mustache, cap"
+  },
+  {
+    "file": "younger_17.png",
+    "source": "younger",
+    "age": "27",
+    "skin_tone": "Light-medium",
+    "sex": "Female",
+    "hair_style": "Long braid with purple highlights"
+  },
+  {
+    "file": "younger_18.png",
+    "source": "younger",
+    "age": "30",
+    "skin_tone": "Dark",
+    "sex": "Male",
+    "hair_style": "Long dreadlocks with beads"
+  },
+  {
+    "file": "younger_19.png",
+    "source": "younger",
+    "age": "26",
+    "skin_tone": "Light-medium",
+    "sex": "Non-binary",
+    "hair_style": "Short curly hair, round glasses"
+  },
+  {
+    "file": "younger_20.png",
+    "source": "younger",
+    "age": "28",
+    "skin_tone": "Dark",
+    "sex": "Female",
+    "hair_style": "Side-shaved blue curls"
+  },
+  {
+    "file": "younger_21.png",
+    "source": "younger",
+    "age": "25",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "hair_style": "Long wavy blonde hair"
+  },
+  {
+    "file": "younger_22.png",
+    "source": "younger",
+    "age": "27",
+    "skin_tone": "Medium",
+    "sex": "Male",
+    "hair_style": "Short curly black hair"
+  },
+  {
+    "file": "younger_23.png",
+    "source": "younger",
+    "age": "23",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "hair_style": "Black bob with purple tips, bucket hat"
+  },
+  {
+    "file": "younger_24.png",
+    "source": "younger",
+    "age": "26",
+    "skin_tone": "Fair",
+    "sex": "Male",
+    "hair_style": "Short tousled blonde hair"
+  },
+  {
+    "file": "younger_25.png",
+    "source": "younger",
+    "age": "29",
+    "skin_tone": "Dark",
+    "sex": "Female",
+    "hair_style": "Long silver box braids"
+  },
+  {
+    "file": "older_01.png",
+    "source": "older",
+    "age": "43",
+    "skin_tone": "Light-medium",
+    "sex": "Male",
+    "build": "Average",
+    "hair_style": "Salt-and-pepper wavy hair"
+  },
+  {
+    "file": "older_02.png",
+    "source": "older",
+    "age": "46",
+    "skin_tone": "Light-medium",
+    "sex": "Female",
+    "build": "Plus-size",
+    "hair_style": "Curly black hair with purple streaks, head wrap"
+  },
+  {
+    "file": "older_03.png",
+    "source": "older",
+    "age": "50",
+    "skin_tone": "Dark",
+    "sex": "Male",
+    "build": "Broad",
+    "hair_style": "Bald with trimmed beard"
+  },
+  {
+    "file": "older_04.png",
+    "source": "older",
+    "age": "44",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "build": "Tall/slim",
+    "hair_style": "Long silver hair with lavender tips"
+  },
+  {
+    "file": "older_05.png",
+    "source": "older",
+    "age": "57",
+    "skin_tone": "East Asian",
+    "sex": "Male",
+    "build": "Lean",
+    "hair_style": "Long silver topknot, goatee"
+  },
+  {
+    "file": "older_06.png",
+    "source": "older",
+    "age": "42",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "build": "Curvy",
+    "hair_style": "Short curly red hair"
+  },
+  {
+    "file": "older_07.png",
+    "source": "older",
+    "age": "48",
+    "skin_tone": "Light",
+    "sex": "Male",
+    "build": "Athletic",
+    "hair_style": "Salt-and-pepper undercut"
+  },
+  {
+    "file": "older_08.png",
+    "source": "older",
+    "age": "45",
+    "skin_tone": "Dark",
+    "sex": "Female",
+    "build": "Average",
+    "hair_style": "Long locs with gray streaks"
+  },
+  {
+    "file": "older_09.png",
+    "source": "older",
+    "age": "47",
+    "skin_tone": "Medium-tan",
+    "sex": "Male",
+    "build": "Broad",
+    "hair_style": "Long dark hair, beard"
+  },
+  {
+    "file": "older_10.png",
+    "source": "older",
+    "age": "51",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "build": "Plus-size",
+    "hair_style": "Teal double buns, glasses"
+  },
+  {
+    "file": "older_11.png",
+    "source": "older",
+    "age": "44",
+    "skin_tone": "Light",
+    "sex": "Male",
+    "build": "Slim",
+    "hair_style": "Medium silver hair swept aside"
+  },
+  {
+    "file": "older_12.png",
+    "source": "older",
+    "age": "41",
+    "skin_tone": "Medium",
+    "sex": "Non-binary",
+    "build": "Athletic",
+    "hair_style": "White side shave with long top"
+  },
+  {
+    "file": "older_13.png",
+    "source": "older",
+    "age": "52",
+    "skin_tone": "Light",
+    "sex": "Male",
+    "build": "Average",
+    "hair_style": "Long brown hair with gray beard, glasses"
+  },
+  {
+    "file": "older_14.png",
+    "source": "older",
+    "age": "43",
+    "skin_tone": "East Asian",
+    "sex": "Female",
+    "build": "Petite",
+    "hair_style": "Straight black bob, red beret"
+  },
+  {
+    "file": "older_15.png",
+    "source": "older",
+    "age": "58",
+    "skin_tone": "Medium-dark",
+    "sex": "Male",
+    "build": "Muscular",
+    "hair_style": "White hair tied back, full white beard"
+  },
+  {
+    "file": "older_16.png",
+    "source": "older",
+    "age": "45",
+    "skin_tone": "Dark",
+    "sex": "Female",
+    "build": "Plus-size",
+    "hair_style": "Short bleached curls"
+  },
+  {
+    "file": "older_17.png",
+    "source": "older",
+    "age": "49",
+    "skin_tone": "Medium",
+    "sex": "Male",
+    "build": "Average",
+    "hair_style": "Salt-and-pepper curls, beard"
+  },
+  {
+    "file": "older_18.png",
+    "source": "older",
+    "age": "42",
+    "skin_tone": "Dark",
+    "sex": "Female",
+    "build": "Athletic",
+    "hair_style": "Teal side shave with textured curls"
+  },
+  {
+    "file": "older_19.png",
+    "source": "older",
+    "age": "47",
+    "skin_tone": "Light",
+    "sex": "Non-binary",
+    "build": "Stocky",
+    "hair_style": "Short fauxhawk, red glasses"
+  },
+  {
+    "file": "older_20.png",
+    "source": "older",
+    "age": "40",
+    "skin_tone": "East Asian",
+    "sex": "Female",
+    "build": "Slim",
+    "hair_style": "Long black hair with gray/purple streaks in high ponytail"
+  },
+  {
+    "file": "older_21.png",
+    "source": "older",
+    "age": "50",
+    "skin_tone": "Medium",
+    "sex": "Male",
+    "build": "Heavyset",
+    "hair_style": "Long black hair in bun, beard"
+  },
+  {
+    "file": "older_22.png",
+    "source": "older",
+    "age": "46",
+    "skin_tone": "Fair",
+    "sex": "Female",
+    "build": "Curvy",
+    "hair_style": "Long wavy blonde hair"
+  },
+  {
+    "file": "older_23.png",
+    "source": "older",
+    "age": "55",
+    "skin_tone": "Light-medium",
+    "sex": "Male",
+    "build": "Rugged",
+    "hair_style": "Gray beard, knit beanie"
+  },
+  {
+    "file": "older_24.png",
+    "source": "older",
+    "age": "43",
+    "skin_tone": "Dark",
+    "sex": "Female",
+    "build": "Athletic",
+    "hair_style": "Very short silver pixie"
+  },
+  {
+    "file": "older_25.png",
+    "source": "older",
+    "age": "48",
+    "skin_tone": "Medium",
+    "sex": "Male",
+    "build": "Slim",
+    "hair_style": "Long locs with purple highlights, glasses"
+  }
+]

@@ -1,12 +1,21 @@
-"""Deterministic procedural pixel-art bust portraits, FF1-battle-menu style.
+"""Character bust portraits.
 
-Each portrait is drawn on a tiny grid and scaled up with nearest-neighbor
-scaling so it stays chunky and pixel-y at any display size.
+Prefers the hand-picked portrait art in assets/portraits/ (sliced from
+AI-generated grids), assigned deterministically per character seed. Falls
+back to a tiny procedural pixel-art bust, drawn on a grid and scaled with
+nearest-neighbor so it stays chunky, if no portrait art is available.
 """
 
 import random
+from pathlib import Path
 
 import pygame
+
+PORTRAITS_DIR = Path(__file__).resolve().parent.parent / "assets" / "portraits"
+
+_portrait_files = None
+_portrait_cache = {}
+_scaled_cache = {}
 
 GRID = 16
 
@@ -57,8 +66,41 @@ def _draw_hair(px, style, hair_color):
             px[0][x] = hair_color
 
 
+def _list_portrait_files():
+    global _portrait_files
+    if _portrait_files is None:
+        if PORTRAITS_DIR.is_dir():
+            _portrait_files = sorted(p for p in PORTRAITS_DIR.glob("*.png"))
+        else:
+            _portrait_files = []
+    return _portrait_files
+
+
+def _load_portrait(path):
+    surface = _portrait_cache.get(path)
+    if surface is None:
+        surface = pygame.image.load(str(path)).convert()
+        _portrait_cache[path] = surface
+    return surface
+
+
 def draw_bust(surface, rect, seed, hair_style=None, hair_color=None,
               skin_tone=None, shirt_color=None):
+    files = _list_portrait_files()
+    if files:
+        path = files[seed % len(files)]
+        cache_key = (path, rect.size)
+        scaled = _scaled_cache.get(cache_key)
+        if scaled is None:
+            art = _load_portrait(path)
+            scaled = pygame.transform.smoothscale(art, rect.size)
+            _scaled_cache[cache_key] = scaled
+        surface.blit(scaled, rect.topleft)
+        return
+    _draw_procedural_bust(surface, rect, seed, hair_style, hair_color, skin_tone, shirt_color)
+
+
+def _draw_procedural_bust(surface, rect, seed, hair_style, hair_color, skin_tone, shirt_color):
     rng = random.Random(seed)
     skin = skin_tone or rng.choice(SKIN_TONES)
     hair = hair_color or rng.choice(HAIR_COLORS)

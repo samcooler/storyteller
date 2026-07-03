@@ -12,7 +12,9 @@ python3 -m venv .venv
 ```
 
 By default it fills whatever display it's run on (auto-detected, true
-fullscreen). Pass `--windowed` for a smaller 1280x720 dev window instead.
+fullscreen). Pass `--windowed` for a smaller 1280x960 dev window instead.
+Everything renders internally at a fixed 640x480 and is upscaled with square
+pixels — keeps it fast on the Pi regardless of the actual display resolution.
 
 Note: on macOS, pygame currently only has prebuilt wheels up through
 Python 3.12 — if your default `python3` is newer, use `python3.12` to make
@@ -24,8 +26,20 @@ the venv.
 - In a game: Esc returns to the menu.
 - Bonk the Billionaire: press 1-9 to bonk a hole, matching the number under it.
 - Polycule Simulator: Left/Right to pick a card, Enter to play it (then
-  Up/Down + Enter to choose a target if needed, Backspace to cancel), Tab to
-  toggle the roster window.
+  Up/Down + Enter to choose a target if needed, Backspace to cancel), Tab for
+  the roster window, C for the calendar.
+
+## Character portraits
+
+`assets/portraits/` holds pre-sliced character bust art (see
+`assets/images_younger.png` / `images_older.png` for the original AI-generated
+grids and their `data_*.rtf` attribute tables). `games/pixel_portrait.py`
+picks a portrait deterministically per character seed; if the folder is ever
+empty it falls back to a tiny procedural pixel-art bust instead, so the game
+still runs without the art assets.
+
+To regenerate `assets/portraits/` from a new grid image + attribute table,
+see `scripts/slice_portraits.py`.
 
 ## Adding a new game
 
