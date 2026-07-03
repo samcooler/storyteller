@@ -83,18 +83,21 @@ multiple of 800x600. Left at the monitor's native 4K (3840x2160), the best
 whole-number fit is 3x (2400x1800), leaving a visible black letterboxed
 border on all sides.
 
-Since this is a physical Pi config (not part of the repo), set it directly in
-`/boot/firmware/config.txt` (or `/boot/config.txt` on older Raspberry Pi OS
-releases) to force a lower, exact-multiple output resolution the 4K monitor
-will still accept over HDMI:
+This is a physical Pi setting, not part of the repo. The Pi runs the modern
+`labwc` (Wayland) desktop with full KMS (`vc4-kms-v3d`), so the classic
+`hdmi_group`/`hdmi_mode` firmware options in `config.txt` don't apply here —
+output mode is instead managed by `kanshi`, the Wayland output daemon labwc
+already runs. Force the lower resolution with a `kanshi` profile:
 
+`~/.config/kanshi/config`:
 ```
-hdmi_group=2
-hdmi_mode=47
+profile {
+	output HDMI-A-1 mode 1600x1200@60.00Hz position 0,0
+}
 ```
 
-That's the standard VESA/DMT 1600x1200 @ 60Hz mode — exactly 2x the 800x600
-internal render size, so the game fills the screen edge-to-edge with no
-letterboxing. Reboot the Pi after editing. If the monitor rejects that mode,
-`hdmi_group=2 hdmi_mode=35` (1280x1024) is a common fallback, though it isn't
-an exact multiple and will letterbox slightly.
+That's exactly 2x the 800x600 internal render size (confirmed available via
+`wlr-randr` on the Dell U3219Q here), so the game fills the screen
+edge-to-edge with no letterboxing. Apply it immediately with
+`pkill -HUP kanshi` (no reboot needed) — it also takes effect automatically
+on future logins since kanshi re-reads this file on start.
