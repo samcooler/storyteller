@@ -12,9 +12,10 @@ python3 -m venv .venv
 ```
 
 By default it fills whatever display it's run on (auto-detected, true
-fullscreen). Pass `--windowed` for a smaller 1280x960 dev window instead.
-Everything renders internally at a fixed 640x480 and is upscaled with square
-pixels — keeps it fast on the Pi regardless of the actual display resolution.
+fullscreen). Pass `--windowed` for a smaller 1600x1200 dev window instead.
+Everything renders internally at a fixed 800x600 and is upscaled with square
+pixels (integer scale only, so it stays crisp) — keeps it fast on the Pi
+regardless of the actual display resolution.
 
 Note: on macOS, pygame currently only has prebuilt wheels up through
 Python 3.12 — if your default `python3` is newer, use `python3.12` to make
@@ -72,3 +73,28 @@ cd ~/storyteller && python3 main.py
 
 To launch automatically on boot, we can add a systemd service or an autostart
 entry later once there's more than one game worth showing off.
+
+### Matching the Pi's HDMI output to the 4K monitor
+
+`fit_rect` in `main.py` only ever scales the internal 800x600 render surface
+by a whole number (so pixel art stays crisp), so whatever the actual display
+resolution is, the game fills it exactly only when that resolution is a clean
+multiple of 800x600. Left at the monitor's native 4K (3840x2160), the best
+whole-number fit is 3x (2400x1800), leaving a visible black letterboxed
+border on all sides.
+
+Since this is a physical Pi config (not part of the repo), set it directly in
+`/boot/firmware/config.txt` (or `/boot/config.txt` on older Raspberry Pi OS
+releases) to force a lower, exact-multiple output resolution the 4K monitor
+will still accept over HDMI:
+
+```
+hdmi_group=2
+hdmi_mode=47
+```
+
+That's the standard VESA/DMT 1600x1200 @ 60Hz mode — exactly 2x the 800x600
+internal render size, so the game fills the screen edge-to-edge with no
+letterboxing. Reboot the Pi after editing. If the monitor rejects that mode,
+`hdmi_group=2 hdmi_mode=35` (1280x1024) is a common fallback, though it isn't
+an exact multiple and will letterbox slightly.

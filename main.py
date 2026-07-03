@@ -7,7 +7,7 @@ from games import GAMES
 from games import ui
 
 FPS = 60
-INTERNAL_SIZE = (640, 480)  # real, low render resolution - upscaled with square pixels
+INTERNAL_SIZE = (800, 600)  # real, low render resolution - upscaled with square pixels
 
 BG = (18, 18, 24)
 FG = (240, 240, 240)
@@ -20,9 +20,9 @@ def create_screen():
     --windowed forces a smaller dev-friendly window instead.
     """
     if os.environ.get("SDL_VIDEODRIVER") == "dummy":
-        return pygame.display.set_mode((1280, 960))
+        return pygame.display.set_mode((1600, 1200))
     if "--windowed" in sys.argv:
-        return pygame.display.set_mode((1280, 960))
+        return pygame.display.set_mode((1600, 1200))
     return pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
 
 
