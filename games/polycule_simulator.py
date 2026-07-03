@@ -64,11 +64,30 @@ STATUSES = ["happiness", "fulfillment", "energy", "stress", "desire"]
 
 COMMIT_THRESHOLD = 70
 MAX_PROSPECTS_PER_MEMBER = 3
-HAND_SIZE = 5
+DRAW_MAX = 3
+HAND_CAP = 7
+DISCARD_TO = 4
 WEEKS_PER_QUARTER = 12
 ENERGY_COST = 15
 START_MEMBERS = 3
 START_OTHERS = 4
+EXIT_BREAKUP_TIER = 2
+
+# Every action card resolves against this ladder: one outcome tier is rolled
+# per play, and the same tier drives every stat delta the card defines, so a
+# single roll reads as one coherent outcome instead of independent stats.
+OUTCOME_TIERS = [
+    "Total disaster.",
+    "That really did not land.",
+    "Rough going. It shows.",
+    "A little awkward, honestly.",
+    "Mixed bag, more miss than hit.",
+    "Mixed bag, more hit than miss.",
+    "That lands better than expected.",
+    "Genuinely good moment.",
+    "One for the highlight reel.",
+    "About as good as it gets.",
+]
 
 GENERIC_CARDS = [
     {"id": "date_night", "name": "Date Night", "kind": "date",
@@ -111,26 +130,26 @@ GENERIC_CARDS = [
     {"id": "meet_the_metamours", "name": "Meet the Metamours", "kind": "court",
      "blurb": "Invite {target} to meet the rest of the polycule.", "interest": (-10, 30)},
 
-    {"id": "trauma_dump", "name": "Overshares a Trauma Dump", "kind": "flag",
-     "blurb": "{target} launches into a trauma dump on date one.", "interest": (-30, 10)},
-    {"id": "still_lives_with_ex", "name": "Still Lives With Their Ex", "kind": "flag",
-     "blurb": "{target} mentions they still live with their ex. 'It's complicated.'", "interest": (-30, 5)},
-    {"id": "crypto_pitch", "name": "Won't Stop Talking About Crypto", "kind": "flag",
-     "blurb": "{target} corners you about their new coin.", "interest": (-25, 5)},
-    {"id": "not_like_other_people", "name": "'I'm Not Like Other People'", "kind": "flag",
-     "blurb": "{target} says 'I'm not like other people' completely unironically.", "interest": (-28, 8)},
-    {"id": "no_job_ever", "name": "Has Never Had a Job", "kind": "flag",
-     "blurb": "{target} casually mentions they've never had a job. Trust fund? Vibes? Unclear.", "interest": (-25, 12)},
-    {"id": "reads_consent_forms", "name": "Actually Reads the Consent Forms", "kind": "flag",
-     "blurb": "{target} reads the whole consent form before signing anything.", "interest": (12, 32)},
-    {"id": "remembers_order", "name": "Remembers Your Coffee Order", "kind": "flag",
-     "blurb": "{target} remembers your coffee order from three weeks ago.", "interest": (10, 30)},
-    {"id": "has_a_therapist", "name": "Has a Therapist and Uses Them", "kind": "flag",
-     "blurb": "{target} mentions their therapist like a normal, healthy person.", "interest": (12, 32)},
-    {"id": "checks_in", "name": "Checks In After a Hard Day", "kind": "flag",
-     "blurb": "{target} texts just to check in after a rough day.", "interest": (10, 28)},
-    {"id": "splits_the_bill", "name": "Splits the Bill Without Being Asked", "kind": "flag",
-     "blurb": "{target} splits the bill before you can even reach for your wallet.", "interest": (8, 26)},
+    {"id": "overshare_early", "name": "Overshare Early", "kind": "flag",
+     "blurb": "Trauma dump on {target} way earlier than you probably should.", "interest": (-25, 20)},
+    {"id": "ask_about_the_ex", "name": "Ask About The Ex", "kind": "flag",
+     "blurb": "Ask {target} point-blank about their living situation with their ex.", "interest": (-20, 18)},
+    {"id": "pitch_your_crypto", "name": "Pitch Your Crypto", "kind": "flag",
+     "blurb": "Pitch {target} on your new relationship coin.", "interest": (-28, 10)},
+    {"id": "declare_different", "name": "Declare You're Different", "kind": "flag",
+     "blurb": "Tell {target} you're not like other people.", "interest": (-22, 16)},
+    {"id": "bring_up_money", "name": "Bring Up Money", "kind": "flag",
+     "blurb": "Casually bring up how you actually make ends meet.", "interest": (-20, 18)},
+    {"id": "read_consent_form_aloud", "name": "Read The Consent Form Aloud", "kind": "flag",
+     "blurb": "Actually read the whole consent form out loud before signing anything with {target}.", "interest": (8, 24)},
+    {"id": "bring_their_order", "name": "Bring Their Coffee Order", "kind": "flag",
+     "blurb": "Show up with {target}'s coffee order, unasked.", "interest": (6, 22)},
+    {"id": "mention_your_therapist", "name": "Bring Up Your Therapist", "kind": "flag",
+     "blurb": "Mention your therapist to {target}, completely normally.", "interest": (8, 24)},
+    {"id": "check_in_on_them", "name": "Check In After Their Hard Day", "kind": "flag",
+     "blurb": "Text {target} just to check in after a rough day.", "interest": (6, 20)},
+    {"id": "insist_on_splitting", "name": "Insist On Splitting The Bill", "kind": "flag",
+     "blurb": "Split the bill before {target} can reach for their wallet.", "interest": (5, 18)},
 
     {"id": "go_out", "name": "Go Out", "kind": "meet",
      "blurb": "Head out to {venue} and see who's around."},
@@ -146,24 +165,32 @@ GENERIC_CARDS = [
     {"id": "group_trip", "name": "Plan a Group Trip", "kind": "group",
      "blurb": "Propose a trip for the whole cule.", "harmony": (-8, 18), "chaos": (0, 10)},
 
-    {"id": "mercury_retrograde", "name": "Mercury Retrograde", "kind": "chaos",
-     "blurb": "Mercury goes retrograde and everyone's texts start crossing.",
-     "harmony": (-15, 5), "chaos": (10, 30), "stress": (5, 20)},
-    {"id": "ex_shows_up", "name": "An Ex Shows Up at Brunch", "kind": "chaos",
-     "blurb": "Someone's ex shows up at brunch. Unannounced. Uninvited.",
-     "harmony": (-20, 0), "chaos": (15, 30), "stress": (8, 22)},
-    {"id": "group_chat_screenshot", "name": "The Group Chat Gets Screenshotted", "kind": "chaos",
-     "blurb": "Someone screenshots the group chat and it gets back to the wrong person.",
-     "harmony": (-25, -5), "chaos": (15, 35), "stress": (10, 25)},
-    {"id": "water_heater_dies", "name": "The Water Heater Dies", "kind": "chaos",
-     "blurb": "The water heater dies and everyone has Opinions about the fix.",
-     "harmony": (-15, 10), "chaos": (5, 20), "stress": (5, 15)},
-    {"id": "surprise_metamour", "name": "A New Metamour Appears Unannounced", "kind": "chaos",
-     "blurb": "Someone brings a new partner to game night without a heads up.",
-     "harmony": (-20, 5), "chaos": (10, 25), "stress": (5, 18)},
-    {"id": "full_moon", "name": "Full Moon Energy", "kind": "chaos",
-     "blurb": "It's a full moon and everyone is unhinged for absolutely no reason.",
+    {"id": "blame_mercury", "name": "Blame Mercury Retrograde", "kind": "chaos",
+     "blurb": "Announce to the house that Mercury is in retrograde and everyone should lower their expectations this week.",
+     "harmony": (-15, 8), "chaos": (8, 28), "stress": (2, 15)},
+    {"id": "invite_your_ex", "name": "Invite Your Ex To Brunch", "kind": "chaos",
+     "blurb": "Invite your ex to Sunday brunch. On purpose. To 'test the waters.'",
+     "harmony": (-20, 5), "chaos": (12, 28), "stress": (5, 20)},
+    {"id": "screenshot_the_chat", "name": "Screenshot The Group Chat", "kind": "chaos",
+     "blurb": "Screenshot the group chat 'just to keep receipts.'",
+     "harmony": (-22, 0), "chaos": (12, 32), "stress": (8, 22)},
+    {"id": "ignore_the_water_heater", "name": "Ignore The Water Heater", "kind": "chaos",
+     "blurb": "Notice the water heater is making a noise and decide it's Not Your Problem this week.",
+     "harmony": (-12, 10), "chaos": (5, 18), "stress": (2, 12)},
+    {"id": "surprise_metamour", "name": "Bring Someone New To Game Night", "kind": "chaos",
+     "blurb": "Bring a new partner to game night without a heads up.",
+     "harmony": (-18, 8), "chaos": (8, 25), "stress": (2, 16)},
+    {"id": "full_moon", "name": "Lean Into Full Moon Energy", "kind": "chaos",
+     "blurb": "Announce it's a full moon and use that as license to be unhinged all week.",
      "harmony": (-10, 15), "chaos": (10, 25)},
+
+    {"id": "have_the_talk", "name": "Have The Talk", "kind": "exit", "target_scope": "members",
+     "blurb": "Sit {target} down and have The Talk about where this is really going.",
+     "trust": (-30, 25), "spark": (-20, 18)},
+    {"id": "cut_it_off", "name": "Cut It Off", "kind": "exit", "target_scope": "members_and_prospects",
+     "guaranteed_exit": True,
+     "blurb": "Tell {target} plainly that this isn't going anywhere.",
+     "trust": (-40, 10), "spark": (-30, 5)},
 ]
 
 ARCHETYPE_CARDS = {
@@ -261,6 +288,7 @@ class Character:
         self.traits = {t: rng.randint(20, 90) for t in TRAITS}
         self.statuses = {s: rng.randint(40, 80) for s in STATUSES}
         self.preferred_activity = rng.choice(ACTIVITIES)
+        self.hand = []
 
     def deck(self):
         deck = list(GENERIC_CARDS)
@@ -309,6 +337,7 @@ class PolyculeSimulator(Game):
         self.state = "hand"
         self.hand = []
         self.hand_index = 0
+        self.drawn_cards = []
         self.target_options = []
         self.target_index = 0
         self.pending_card = None
@@ -324,7 +353,7 @@ class PolyculeSimulator(Game):
         self.chosen_day = None
         self.date_is_prospect = False
 
-        self._draw_hand()
+        self._start_turn(self.active)
 
     @property
     def active(self):
@@ -359,18 +388,28 @@ class PolyculeSimulator(Game):
                 continue
             if card["kind"] == "meet" and len(my_prospects) >= MAX_PROSPECTS_PER_MEMBER:
                 continue
+            if card["kind"] == "exit":
+                if card.get("target_scope") == "members_and_prospects":
+                    if not others and not my_prospects:
+                        continue
+                elif not others:
+                    continue
             pool.append(card)
         if eligible_prospects:
             pool.append(COMMIT_CARD)
         return pool
 
-    def _draw_hand(self):
-        member = self.active
+    def _start_turn(self, member):
         pool = self._eligible_cards(member)
-        n = min(HAND_SIZE, len(pool))
-        self.hand = self.rng.sample(pool, n) if n else []
+        available = [c for c in pool if not any(c is h for h in member.hand)]
+        room = HAND_CAP - len(member.hand)
+        n = max(0, min(DRAW_MAX, room, len(available)))
+        drawn = self.rng.sample(available, n) if n else []
+        member.hand.extend(drawn)
+        self.hand = member.hand
+        self.drawn_cards = drawn
         self.hand_index = 0
-        self.state = "hand"
+        self.state = "draw"
 
     def _card_targets(self, card):
         member = self.active
@@ -379,6 +418,10 @@ class PolyculeSimulator(Game):
             return [m.name for m in self.members if m.name != member.name]
         if card["kind"] == "date":
             return [m.name for m in self.members if m.name != member.name] + list(my_prospects.keys())
+        if card["kind"] == "exit":
+            if card.get("target_scope") == "members_and_prospects":
+                return [m.name for m in self.members if m.name != member.name] + list(my_prospects.keys())
+            return [m.name for m in self.members if m.name != member.name]
         if card["kind"] in ("court", "flag"):
             return list(my_prospects.keys())
         if card["kind"] == "commit":
@@ -399,6 +442,13 @@ class PolyculeSimulator(Game):
 
     def _roll(self, lo, hi):
         return self.rng.randint(lo, hi)
+
+    def _roll_tier(self):
+        return self.rng.randrange(len(OUTCOME_TIERS))
+
+    def _tier_value(self, lo, hi, tier):
+        frac = tier / (len(OUTCOME_TIERS) - 1)
+        return round(lo + frac * (hi - lo))
 
     def _unique_name(self):
         existing = set(self.prospects) | {m.name for m in self.members}
@@ -430,22 +480,39 @@ class PolyculeSimulator(Game):
         flavor = self._flavor(card, target_name)
         if card["kind"] == "bond":
             rel = self.get_rel(member.name, target_name)
-            t_lo, t_hi = card["trust"]
-            s_lo, s_hi = card["spark"]
-            trust_d = self._roll(t_lo, t_hi)
-            spark_d = self._roll(s_lo, s_hi)
+            tier = self._roll_tier()
+            trust_d = self._tier_value(*card["trust"], tier)
+            spark_d = self._tier_value(*card["spark"], tier)
             rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
             rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
-            self.result_text = [flavor, f"Trust {trust_d:+d}, Spark {spark_d:+d}."]
+            self.result_text = [flavor, OUTCOME_TIERS[tier], f"Trust {trust_d:+d}, Spark {spark_d:+d}."]
         elif card["kind"] in ("court", "flag"):
             prospect = self.prospects[target_name]
-            lo, hi = card["interest"]
-            delta = self._roll(lo, hi)
+            tier = self._roll_tier()
+            delta = self._tier_value(*card["interest"], tier)
             prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
-            self.result_text = [flavor, f"({delta:+d} interest)"]
+            self.result_text = [flavor, OUTCOME_TIERS[tier], f"({delta:+d} interest)"]
             if prospect["interest"] <= 0:
                 del self.prospects[target_name]
                 self.result_text.append(f"{target_name} stops responding entirely.")
+        elif card["kind"] == "exit":
+            tier = self._roll_tier()
+            is_prospect = target_name in self.prospects
+            guaranteed = card.get("guaranteed_exit", False)
+            if is_prospect:
+                self.prospects.pop(target_name)
+                self.result_text = [flavor, OUTCOME_TIERS[tier], f"{target_name} is out of the picture."]
+            elif guaranteed or tier <= EXIT_BREAKUP_TIER:
+                self.members = [m for m in self.members if m.name != target_name]
+                self.relationships = {k: v for k, v in self.relationships.items() if target_name not in k}
+                self.result_text = [flavor, OUTCOME_TIERS[tier], f"{target_name} moves out for good."]
+            else:
+                rel = self.get_rel(member.name, target_name)
+                trust_d = self._tier_value(*card["trust"], tier)
+                spark_d = self._tier_value(*card["spark"], tier)
+                rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
+                rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
+                self.result_text = [flavor, OUTCOME_TIERS[tier], f"Trust {trust_d:+d}, Spark {spark_d:+d}."]
         elif card["kind"] == "meet":
             venue = self.rng.choice(VENUES)
             name = self._unique_name()
@@ -462,17 +529,15 @@ class PolyculeSimulator(Game):
             self.get_rel(member.name, new_member.name).update({"trust": start, "spark": start})
             self.result_text = [flavor, f"{new_member.name} joins the cule for real!"]
         elif card["kind"] in ("group", "chaos"):
-            h_lo, h_hi = card["harmony"]
-            c_lo, c_hi = card["chaos"]
-            h_d = self._roll(h_lo, h_hi)
-            c_d = self._roll(c_lo, c_hi)
+            tier = self._roll_tier()
+            h_d = self._tier_value(*card["harmony"], tier)
+            c_d = self._tier_value(*card["chaos"], tier)
             self.harmony = max(0, min(100, self.harmony + h_d))
             self.chaos = max(0, min(100, self.chaos + c_d))
-            lines = [flavor, f"Harmony {h_d:+d}, Chaos {c_d:+d}."]
+            lines = [flavor, OUTCOME_TIERS[tier], f"Harmony {h_d:+d}, Chaos {c_d:+d}."]
             if "stress" in card:
                 victim = self.rng.choice(self.members)
-                s_lo, s_hi = card["stress"]
-                s_d = self._roll(s_lo, s_hi)
+                s_d = self._tier_value(*card["stress"], tier)
                 victim.statuses["stress"] = max(0, min(100, victim.statuses["stress"] + s_d))
                 lines.append(f"{victim.name}'s stress {s_d:+d}.")
             self.result_text = lines
@@ -583,9 +648,15 @@ class PolyculeSimulator(Game):
             f"Trust {trust_d:+d}, Spark {spark_d:+d}.",
         ]
 
-    def _end_week(self):
+    def _request_end_turn(self):
+        if len(self.hand) > DISCARD_TO:
+            self.state = "discard"
+            self.hand_index = 0
+        else:
+            self._finish_turn()
+
+    def _finish_turn(self):
         self.week += 1
-        self._draw_hand()
         events = self.calendar.pop(self.week, [])
         if events:
             lines = []
@@ -593,6 +664,8 @@ class PolyculeSimulator(Game):
                 lines.extend(self._resolve_scheduled_event(ev))
             self.result_text = lines
             self.state = "recap"
+        else:
+            self._start_turn(self.active)
 
     def handle_event(self, event):
         if event.type != pygame.KEYDOWN:
@@ -611,7 +684,22 @@ class PolyculeSimulator(Game):
             return
         if self.overlay:
             return
-        if self.state == "hand":
+        if self.state == "draw":
+            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                self.state = "hand"
+                self.hand_index = 0
+        elif self.state == "discard":
+            if event.key in (pygame.K_LEFT, pygame.K_a):
+                self.hand_index = (self.hand_index - 1) % len(self.hand)
+            elif event.key in (pygame.K_RIGHT, pygame.K_d):
+                self.hand_index = (self.hand_index + 1) % len(self.hand)
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                card = self.hand[self.hand_index]
+                self.hand.remove(card)
+                self.hand_index = 0
+                if len(self.hand) <= DISCARD_TO:
+                    self._finish_turn()
+        elif self.state == "hand":
             options = self.hand + [END_WEEK]
             if event.key in (pygame.K_LEFT, pygame.K_a):
                 self.hand_index = (self.hand_index - 1) % len(options)
@@ -620,8 +708,8 @@ class PolyculeSimulator(Game):
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 card = options[self.hand_index]
                 if card["kind"] == "end":
-                    self._end_week()
-                elif card["kind"] in ("bond", "court", "commit", "date", "flag"):
+                    self._request_end_turn()
+                elif card["kind"] in ("bond", "court", "commit", "date", "flag", "exit"):
                     targets = self._card_targets(card)
                     if not targets:
                         self.result_text = [f"{card['name']} has no one left to target. It fizzles."]
@@ -663,11 +751,14 @@ class PolyculeSimulator(Game):
                 self.state = "hand"
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self._advance_sub_choice()
-        elif self.state in ("result", "recap"):
+        elif self.state == "result":
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self.state = "hand"
                 if self.hand_index >= len(self.hand):
                     self.hand_index = max(0, len(self.hand) - 1)
+        elif self.state == "recap":
+            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                self._start_turn(self.active)
 
     def _network_geometry(self):
         w, h = self.screen.get_size()
@@ -962,6 +1053,24 @@ class PolyculeSimulator(Game):
                              (content_rect.left, content_rect.top + i * int(32 * scale)))
             hint = small_font.render("Enter to continue", True, ui.DIM_TEXT)
             surface.blit(hint, (content_rect.left, content_rect.top + len(self.result_text) * int(32 * scale) + int(20 * scale)))
+        elif self.state == "draw":
+            if self.drawn_cards:
+                names = ", ".join(c["name"] for c in self.drawn_cards)
+                msg = f"{self.active.name} draws: {names}."
+            elif len(self.active.hand) >= HAND_CAP:
+                msg = f"{self.active.name}'s hand is full ({HAND_CAP} cards) - nothing new to draw."
+            else:
+                msg = f"{self.active.name} has no new cards to draw right now."
+            ui.blit_wrapped(surface, body_font, msg, ui.TEXT_COLOR,
+                             content_rect.left + content_rect.width // 2, content_rect.top, content_rect.width)
+            hint = small_font.render("Enter to continue", True, ui.DIM_TEXT)
+            surface.blit(hint, (content_rect.left, content_rect.top + int(60 * scale)))
+        elif self.state == "discard":
+            msg = f"Hand over the limit - discard down to {DISCARD_TO}. ({len(self.hand)}/{DISCARD_TO})"
+            ui.blit_wrapped(surface, body_font, msg, ui.TEXT_COLOR,
+                             content_rect.left + content_rect.width // 2, content_rect.top, content_rect.width)
+            hint = small_font.render("Enter to discard the selected card", True, ui.DIM_TEXT)
+            surface.blit(hint, (content_rect.left, content_rect.top + int(40 * scale)))
         else:
             ui.blit_wrapped(surface, body_font, "Pick a card to play, or End Week when you're done.",
                              ui.TEXT_COLOR, content_rect.left + content_rect.width // 2, content_rect.top,
@@ -1060,7 +1169,9 @@ class PolyculeSimulator(Game):
         return top + n * spacing
 
     def _draw_hand_row(self, surface, main_rect, scale, body_font, small_font):
-        options = self.hand + [END_WEEK]
+        options = list(self.hand) if self.state == "discard" else self.hand + [END_WEEK]
+        if not options:
+            return
         gap = int(14 * scale)
         available = main_rect.width - int(40 * scale) - gap * (len(options) - 1)
         card_w = min(int(150 * scale), available // len(options))
@@ -1071,7 +1182,7 @@ class PolyculeSimulator(Game):
 
         for i, card in enumerate(options):
             rect = pygame.Rect(start_x + i * (card_w + gap), y, card_w, card_h)
-            selected = self.state == "hand" and i == self.hand_index
+            selected = self.state in ("hand", "discard") and i == self.hand_index
             top_color = (110, 70, 130) if selected else ui.PASTEL_TOP
             bottom_color = (150, 90, 160) if selected else ui.PASTEL_BOTTOM
             border = ui.ACCENT if selected else ui.BORDER_OUTER
