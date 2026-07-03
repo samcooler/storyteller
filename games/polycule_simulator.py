@@ -4,7 +4,9 @@ No character is "the player" - you cycle control between everyone in the
 cule, one week at a time. Each week the active member draws a hand of
 cards (flavored by their archetype) and plays as many as they like against
 existing partners, met prospects, or the household as a whole, then passes
-control to the next member.
+control to the next member. Time is tracked as weeks inside quarters, and
+some cards (dates) get negotiated and scheduled onto a calendar instead of
+resolving immediately.
 """
 
 import math
@@ -50,14 +52,24 @@ KINK_POOL = [
 
 HOBBIES = ["pottery", "D&D", "birdwatching", "rock climbing", "baking sourdough", "thrifting"]
 PROJECTS = ["a zine", "a mural", "a home video", "a diorama", "a podcast"]
+DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+ACTIVITIES = ["Park", "Movie", "Jog"]
+SCHEDULE_OFFSETS = [("This week", 0), ("Next week", 1), ("In two weeks", 2)]
+
+TRAITS = ["extraversion", "openness", "conscientiousness", "security", "empathy"]
+STATUSES = ["happiness", "fulfillment", "energy", "stress", "desire"]
 
 COMMIT_THRESHOLD = 70
 MAX_PROSPECTS_PER_MEMBER = 3
 HAND_SIZE = 5
+WEEKS_PER_QUARTER = 12
+ENERGY_COST = 15
+START_MEMBERS = 3
+START_OTHERS = 4
 
 GENERIC_CARDS = [
-    {"id": "date_night", "name": "Date Night", "kind": "bond",
-     "blurb": "Plan a night out with {target}.", "trust": (-2, 10), "spark": (0, 14)},
+    {"id": "date_night", "name": "Date Night", "kind": "date",
+     "blurb": "Plan a date with {target}."},
     {"id": "deep_talk", "name": "Deep Talk", "kind": "bond",
      "blurb": "Stay up talking with {target} about feelings.", "trust": (2, 12), "spark": (-2, 4)},
     {"id": "chore_split", "name": "Split Chores", "kind": "bond",
@@ -129,6 +141,9 @@ class Character:
         self.archetype = archetype or rng.choice(ARCHETYPES)
         self.kinks = rng.sample(KINK_POOL, 2)
         self.seed = rng.randint(0, 1 << 30)
+        self.traits = {t: rng.randint(20, 90) for t in TRAITS}
+        self.statuses = {s: rng.randint(40, 80) for s in STATUSES}
+        self.preferred_activity = rng.choice(ACTIVITIES)
 
     def deck(self):
         deck = list(GENERIC_CARDS)
@@ -140,22 +155,40 @@ class Character:
 
 class PolyculeSimulator(Game):
     name = "Polycule Simulator"
-    description = "A card game about your polycule. Arrows + Enter to play cards, Tab for roster."
+    description = "A card game about your polycule. Arrows + Enter to play, Tab roster, C calendar."
 
     def __init__(self, screen):
         super().__init__(screen)
         self.rng = random.Random()
 
     def reset(self):
-        self.week = 1
         self.rng = random.Random()
-        first = Character(self.rng)
-        self.members = [first]
+        self.week = 1
+        self.anim_t = 0.0
+
+        names = self.rng.sample(FIRST_NAMES, START_MEMBERS + START_OTHERS + 2)
+        self.members = [Character(self.rng, name=n) for n in names[:START_MEMBERS + START_OTHERS]]
         self.relationships = {}
+        for i in range(len(self.members)):
+            for j in range(i + 1, len(self.members)):
+                a, b = self.members[i], self.members[j]
+                self.relationships[self._rel_key(a.name, b.name)] = {
+                    "trust": self.rng.randint(35, 90), "spark": self.rng.randint(35, 90),
+                }
+
         self.prospects = {}
-        self.harmony = 60
-        self.chaos = 20
+        for n in names[START_MEMBERS + START_OTHERS:]:
+            c = Character(self.rng, name=n)
+            met_by = self.rng.choice(self.members).name
+            self.prospects[c.name] = {"char": c, "interest": self.rng.randint(20, 60), "met_by": met_by}
+
+        self.harmony = self.rng.randint(50, 80)
+        self.chaos = self.rng.randint(10, 40)
+        self.calendar = {}
         self.node_pos = {}
+        self.overlay = None
+        self.roster_scroll = 0
+
         self.state = "hand"
         self.hand = []
         self.hand_index = 0
@@ -163,12 +196,30 @@ class PolyculeSimulator(Game):
         self.target_index = 0
         self.pending_card = None
         self.result_text = []
-        self.show_roster = False
+
+        self.pending_target = None
+        self.sub_kind = None
+        self.sub_options = []
+        self.sub_index = 0
+        self.date_target_week = None
+        self.proposed_day = None
+        self.counter_day = None
+        self.chosen_day = None
+        self.date_is_prospect = False
+
         self._draw_hand()
 
     @property
     def active(self):
         return self.members[(self.week - 1) % len(self.members)]
+
+    @property
+    def quarter(self):
+        return (self.week - 1) // WEEKS_PER_QUARTER + 1
+
+    @property
+    def week_in_quarter(self):
+        return (self.week - 1) % WEEKS_PER_QUARTER + 1
 
     def _rel_key(self, name_a, name_b):
         return frozenset((name_a, name_b))
@@ -185,7 +236,7 @@ class PolyculeSimulator(Game):
         my_prospects = self._member_prospects(member.name)
         eligible_prospects = {n: p for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD}
         for card in member.deck():
-            if card["kind"] == "bond" and not others:
+            if card["kind"] in ("bond", "date") and not others and not my_prospects:
                 continue
             if card["kind"] == "court" and not my_prospects:
                 continue
@@ -206,20 +257,48 @@ class PolyculeSimulator(Game):
 
     def _card_targets(self, card):
         member = self.active
+        my_prospects = self._member_prospects(member.name)
         if card["kind"] == "bond":
             return [m.name for m in self.members if m.name != member.name]
+        if card["kind"] == "date":
+            return [m.name for m in self.members if m.name != member.name] + list(my_prospects.keys())
         if card["kind"] == "court":
-            return list(self._member_prospects(member.name).keys())
+            return list(my_prospects.keys())
         if card["kind"] == "commit":
-            my_prospects = self._member_prospects(member.name)
             return [n for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD]
         return []
 
     def _roll(self, lo, hi):
         return self.rng.randint(lo, hi)
 
+    def _unique_name(self):
+        existing = set(self.prospects) | {m.name for m in self.members}
+        candidates = [n for n in FIRST_NAMES if n not in existing]
+        if candidates:
+            return self.rng.choice(candidates)
+        suffixes = ["Jr.", "II", "the Younger", "from the group chat", "with the other haircut"]
+        for _ in range(20):
+            name = f"{self.rng.choice(FIRST_NAMES)} {self.rng.choice(suffixes)}"
+            if name not in existing:
+                return name
+        return f"{self.rng.choice(FIRST_NAMES)} #{self.rng.randint(100, 999)}"
+
+    def _flavor(self, card, target_name=None):
+        kwargs = {
+            "target": target_name or "",
+            "hobby": self.rng.choice(HOBBIES),
+            "project": self.rng.choice(PROJECTS),
+            "venue": self.rng.choice(VENUES),
+        }
+        return card["blurb"].format(**kwargs)
+
+    def _spend_energy(self):
+        active = self.active
+        active.statuses["energy"] = max(0, active.statuses["energy"] - ENERGY_COST)
+
     def _resolve(self, card, target_name):
         member = self.active
+        flavor = self._flavor(card, target_name)
         if card["kind"] == "bond":
             rel = self.get_rel(member.name, target_name)
             t_lo, t_hi = card["trust"]
@@ -228,24 +307,19 @@ class PolyculeSimulator(Game):
             spark_d = self._roll(s_lo, s_hi)
             rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
             rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
-            self.result_text = [
-                f"{member.name} + {target_name}: {card['name']}",
-                f"Trust {trust_d:+d}, Spark {spark_d:+d}.",
-            ]
+            self.result_text = [flavor, f"Trust {trust_d:+d}, Spark {spark_d:+d}."]
         elif card["kind"] == "court":
             prospect = self.prospects[target_name]
             lo, hi = card["interest"]
             delta = self._roll(lo, hi)
             prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
-            self.result_text = [f"{member.name} -> {target_name}: {card['name']} ({delta:+d} interest)"]
+            self.result_text = [flavor, f"({delta:+d} interest)"]
             if prospect["interest"] <= 0:
                 del self.prospects[target_name]
                 self.result_text.append(f"{target_name} stops responding entirely.")
         elif card["kind"] == "meet":
             venue = self.rng.choice(VENUES)
-            existing = set(self.prospects) | {m.name for m in self.members}
-            candidates = [n for n in FIRST_NAMES if n not in existing]
-            name = self.rng.choice(candidates) if candidates else self.rng.choice(FIRST_NAMES)
+            name = self._unique_name()
             stranger = Character(self.rng, name=name)
             interest = self._roll(10, 30)
             self.prospects[stranger.name] = {"char": stranger, "interest": interest, "met_by": member.name}
@@ -257,7 +331,7 @@ class PolyculeSimulator(Game):
             start = min(90, prospect["interest"] + 10)
             self.members.append(new_member)
             self.get_rel(member.name, new_member.name).update({"trust": start, "spark": start})
-            self.result_text = [f"{new_member.name} joins the cule for real!"]
+            self.result_text = [flavor, f"{new_member.name} joins the cule for real!"]
         elif card["kind"] == "group":
             h_lo, h_hi = card["harmony"]
             c_lo, c_hi = card["chaos"]
@@ -265,19 +339,141 @@ class PolyculeSimulator(Game):
             c_d = self._roll(c_lo, c_hi)
             self.harmony = max(0, min(100, self.harmony + h_d))
             self.chaos = max(0, min(100, self.chaos + c_d))
-            self.result_text = [f"{member.name}: {card['name']}", f"Harmony {h_d:+d}, Chaos {c_d:+d}."]
+            self.result_text = [flavor, f"Harmony {h_d:+d}, Chaos {c_d:+d}."]
+        self._spend_energy()
+
+    def _negotiate_date(self, target_name, day):
+        member = self.active
+        my_prospects = self._member_prospects(member.name)
+        is_prospect = target_name in my_prospects
+        willingness = my_prospects[target_name]["interest"] if is_prospect else self.get_rel(member.name, target_name)["trust"]
+        busy_days = set(self.rng.sample(DAYS, k=self.rng.randint(1, 3)))
+        if day in busy_days:
+            if willingness >= 50:
+                free_days = [d for d in DAYS if d not in busy_days] or [day]
+                return "counter", self.rng.choice(free_days), is_prospect
+            return "decline", None, is_prospect
+        if willingness >= 30:
+            return "accept", None, is_prospect
+        return "decline", None, is_prospect
+
+    def _enter_sub(self, kind, options):
+        self.sub_kind = kind
+        self.sub_options = options
+        self.sub_index = 0
+        self.state = "sub_choice"
+
+    def _start_date_flow(self, target_name):
+        self.pending_target = target_name
+        self._enter_sub("week", list(SCHEDULE_OFFSETS))
+
+    def _finish_card_fizzle(self, message):
+        self.result_text = [message]
+        self.hand.remove(self.pending_card)
+        self.hand_index = 0
+        self._spend_energy()
+        self.state = "result"
+
+    def _advance_sub_choice(self):
+        label, value = self.sub_options[self.sub_index]
+        if self.sub_kind == "week":
+            self.date_target_week = self.week + value
+            self._enter_sub("day", [(d, d) for d in DAYS])
+        elif self.sub_kind == "day":
+            self.proposed_day = value
+            outcome, counter_day, is_prospect = self._negotiate_date(self.pending_target, value)
+            self.date_is_prospect = is_prospect
+            if outcome == "accept":
+                self.chosen_day = value
+                self._enter_sub("activity", [(a, a) for a in ACTIVITIES])
+            elif outcome == "counter":
+                self.counter_day = counter_day
+                self._enter_sub("counter", [(f"Accept {counter_day}", "accept"), ("Decline", "decline")])
+            else:
+                self._finish_card_fizzle(f"{self.pending_target} isn't up for plans that day.")
+        elif self.sub_kind == "counter":
+            if value == "accept":
+                self.chosen_day = self.counter_day
+                self._enter_sub("activity", [(a, a) for a in ACTIVITIES])
+            else:
+                self._finish_card_fizzle(f"{self.pending_target} passes this time.")
+        elif self.sub_kind == "activity":
+            self.calendar.setdefault(self.date_target_week, []).append({
+                "a": self.active.name, "b": self.pending_target, "day": self.chosen_day,
+                "activity": value, "is_prospect": self.date_is_prospect,
+            })
+            self.result_text = [
+                f"{self.pending_target} is in for {value.lower()} on {self.chosen_day}.",
+                f"(scheduled for week {self.date_target_week})",
+            ]
+            self.hand.remove(self.pending_card)
+            self.hand_index = 0
+            self._spend_energy()
+            self.state = "result"
+
+    def _resolve_scheduled_event(self, ev):
+        a = next((m for m in self.members if m.name == ev["a"]), None)
+        if a is None:
+            return [f"Plans between {ev['a']} and {ev['b']} quietly fell through."]
+        activity = ev["activity"]
+        verb = "go jogging" if activity == "Jog" else f"head to the {activity.lower()}"
+        if ev["is_prospect"]:
+            prospect = self.prospects.get(ev["b"])
+            if prospect is None:
+                return [f"{ev['a']}'s plans with {ev['b']} fell through - they'd already drifted apart."]
+            match = activity == prospect["char"].preferred_activity
+            delta = self.rng.randint(15, 30) if match else self.rng.randint(-5, 10)
+            prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
+            lines = [
+                f"{ev['a']} and {ev['b']} {verb} on {ev['day']}.",
+                f"{'This is exactly their thing.' if match else 'They have an okay time, but seem distracted.'} ({delta:+d} interest)",
+            ]
+            if prospect["interest"] <= 0:
+                del self.prospects[ev["b"]]
+                lines.append(f"{ev['b']} stops responding entirely.")
+            return lines
+        b = next((m for m in self.members if m.name == ev["b"]), None)
+        if b is None:
+            return [f"{ev['a']}'s plans with {ev['b']} fell through."]
+        match = activity == b.preferred_activity
+        trust_d = self.rng.randint(4, 12) if match else self.rng.randint(-4, 6)
+        spark_d = self.rng.randint(6, 16) if match else self.rng.randint(-2, 8)
+        rel = self.get_rel(a.name, b.name)
+        rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
+        rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
+        return [
+            f"{ev['a']} and {ev['b']} {verb} on {ev['day']}.",
+            f"{'A perfect match of interests.' if match else 'Not exactly their favorite, but nice together anyway.'} "
+            f"Trust {trust_d:+d}, Spark {spark_d:+d}.",
+        ]
 
     def _end_week(self):
         self.week += 1
         self._draw_hand()
+        events = self.calendar.pop(self.week, [])
+        if events:
+            lines = []
+            for ev in events:
+                lines.extend(self._resolve_scheduled_event(ev))
+            self.result_text = lines
+            self.state = "recap"
 
     def handle_event(self, event):
         if event.type != pygame.KEYDOWN:
             return
         if event.key == pygame.K_TAB:
-            self.show_roster = not self.show_roster
+            self.overlay = None if self.overlay == "roster" else "roster"
             return
-        if self.show_roster:
+        if event.key == pygame.K_c:
+            self.overlay = None if self.overlay == "calendar" else "calendar"
+            return
+        if self.overlay == "roster":
+            if event.key in (pygame.K_DOWN, pygame.K_s):
+                self.roster_scroll += 1
+            elif event.key in (pygame.K_UP, pygame.K_w):
+                self.roster_scroll = max(0, self.roster_scroll - 1)
+            return
+        if self.overlay:
             return
         if self.state == "hand":
             options = self.hand + [END_WEEK]
@@ -289,7 +485,7 @@ class PolyculeSimulator(Game):
                 card = options[self.hand_index]
                 if card["kind"] == "end":
                     self._end_week()
-                elif card["kind"] in ("bond", "court", "commit"):
+                elif card["kind"] in ("bond", "court", "commit", "date"):
                     targets = self._card_targets(card)
                     if not targets:
                         self.result_text = [f"{card['name']} has no one left to target. It fizzles."]
@@ -315,11 +511,23 @@ class PolyculeSimulator(Game):
                 self.state = "hand"
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 target = self.target_options[self.target_index]
-                self._resolve(self.pending_card, target)
-                self.hand.remove(self.pending_card)
-                self.hand_index = 0
-                self.state = "result"
-        elif self.state == "result":
+                if self.pending_card["kind"] == "date":
+                    self._start_date_flow(target)
+                else:
+                    self._resolve(self.pending_card, target)
+                    self.hand.remove(self.pending_card)
+                    self.hand_index = 0
+                    self.state = "result"
+        elif self.state == "sub_choice":
+            if event.key in (pygame.K_UP, pygame.K_w):
+                self.sub_index = (self.sub_index - 1) % len(self.sub_options)
+            elif event.key in (pygame.K_DOWN, pygame.K_s):
+                self.sub_index = (self.sub_index + 1) % len(self.sub_options)
+            elif event.key == pygame.K_BACKSPACE:
+                self.state = "hand"
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                self._advance_sub_choice()
+        elif self.state in ("result", "recap"):
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 self.state = "hand"
                 if self.hand_index >= len(self.hand):
@@ -352,7 +560,15 @@ class PolyculeSimulator(Game):
     def _prospect_color(self, t):
         return self._lerp_color((60, 55, 70), (255, 150, 190), t)
 
+    def _current_highlight(self):
+        if self.state == "target" and self.target_options:
+            return self.target_options[self.target_index]
+        if self.state == "sub_choice" and self.pending_target:
+            return self.pending_target
+        return None
+
     def update(self, dt):
+        self.anim_t += dt
         _, _, center, min_r, max_r, scale = self._network_geometry()
         active = self.active
         ring = [m for m in self.members if m.name != active.name]
@@ -383,9 +599,14 @@ class PolyculeSimulator(Game):
             cur = self.node_pos.get(pname, target)
             self.node_pos[pname] = (cur[0] + (target[0] - cur[0]) * rate, cur[1] + (target[1] - cur[1]) * rate)
 
+    def _draw_glow(self, surface, pos, base_r, scale):
+        pulse = int(6 * scale + 4 * scale * math.sin(self.anim_t * 5))
+        pygame.draw.circle(surface, (255, 255, 255), pos, base_r + pulse, width=max(2, int(3 * scale)))
+
     def _draw_network(self, surface, center, scale):
         active = self.active
         ring = [m for m in self.members if m.name != active.name]
+        highlight = self._current_highlight()
 
         for i in range(len(ring)):
             for j in range(i + 1, len(ring)):
@@ -424,6 +645,8 @@ class PolyculeSimulator(Game):
         ring_font = ui.font(16, scale)
         for member in ring:
             pos = self.node_pos.get(member.name, center)
+            if member.name == highlight:
+                self._draw_glow(surface, pos, node_r2, scale)
             t = self._strength(self.get_rel(active.name, member.name))
             ring_color = self._bond_color(t)
             pygame.draw.circle(surface, ring_color, pos, node_r2 + int(3 * scale))
@@ -435,6 +658,8 @@ class PolyculeSimulator(Game):
         node_r3 = int(14 * scale)
         for pname, prospect in self.prospects.items():
             pos = self.node_pos.get(pname, center)
+            if pname == highlight:
+                self._draw_glow(surface, pos, node_r3, scale)
             t = prospect["interest"] / 100.0
             ring_color = self._prospect_color(t)
             pygame.draw.circle(surface, ring_color, pos, node_r3 + int(2 * scale))
@@ -449,10 +674,16 @@ class PolyculeSimulator(Game):
         ui.draw_panel(surface, rect, scale)
         title_font = ui.font(30, scale)
         body_font = ui.font(20, scale)
+        small_font = ui.font(15, scale)
         surface.blit(title_font.render("Roster", True, ui.ACCENT), (rect.left + int(20 * scale), rect.top + int(14 * scale)))
         y = rect.top + int(60 * scale)
+        available_h = rect.height - int(60 * scale) - int(50 * scale)
+        row_h = int(28 * scale) * 2 + int(38 * scale)
         portrait_r = int(28 * scale)
-        for member in self.members:
+        max_visible = max(1, available_h // row_h)
+        self.roster_scroll = max(0, min(self.roster_scroll, max(0, len(self.members) - max_visible)))
+        visible = self.members[self.roster_scroll:self.roster_scroll + max_visible]
+        for member in visible:
             others = [m for m in self.members if m.name != member.name]
             if others:
                 avg_trust = sum(self.get_rel(member.name, o.name)["trust"] for o in others) / len(others)
@@ -464,11 +695,59 @@ class PolyculeSimulator(Game):
             tx = px + portrait_r * 2 + int(12 * scale)
             name_tag = f"{member.name} (active)" if member.name == self.active.name else member.name
             surface.blit(body_font.render(name_tag, True, ui.TEXT_COLOR), (tx, y))
-            surface.blit(body_font.render(member.archetype, True, ui.DIM_TEXT), (tx, y + int(22 * scale)))
+            line_h = int(22 * scale)
             bar_w = rect.width - (tx - rect.left) - int(20 * scale)
-            ui.draw_bar(surface, pygame.Rect(tx, y + int(46 * scale), bar_w, int(10 * scale)), avg_trust, 100, (140, 180, 240))
-            ui.draw_bar(surface, pygame.Rect(tx, y + int(60 * scale), bar_w, int(10 * scale)), avg_spark, 100, (240, 140, 190))
-            y += portrait_r * 2 + int(24 * scale)
+            surface.blit(body_font.render(member.archetype, True, ui.DIM_TEXT), (tx, y + line_h))
+            bars_y = y + line_h * 2 + int(4 * scale)
+            bar_h = max(4, int(8 * scale))
+            ui.draw_bar(surface, pygame.Rect(tx, bars_y, bar_w, bar_h), avg_trust, 100, (140, 180, 240))
+            ui.draw_bar(surface, pygame.Rect(tx, bars_y + bar_h + 2, bar_w, bar_h), avg_spark, 100, (240, 140, 190))
+            half = bar_w // 2 - int(4 * scale)
+            status_y = bars_y + (bar_h + 2) * 2 + 2
+            ui.draw_bar(surface, pygame.Rect(tx, status_y, half, bar_h),
+                        member.statuses["happiness"], 100, (255, 210, 120))
+            ui.draw_bar(surface, pygame.Rect(tx + half + int(8 * scale), status_y, half, bar_h),
+                        member.statuses["energy"], 100, (150, 220, 255))
+            traits_label = (f"Extra {member.traits['extraversion']}  Open {member.traits['openness']}  "
+                             f"Empathy {member.traits['empathy']}")
+            surface.blit(small_font.render(traits_label, True, ui.DIM_TEXT), (tx, status_y + bar_h + int(6 * scale)))
+            y += row_h
+
+    def _draw_calendar(self, surface, rect, scale):
+        ui.draw_panel(surface, rect, scale)
+        title_font = ui.font(30, scale)
+        body_font = ui.font(22, scale)
+        small_font = ui.font(18, scale)
+        surface.blit(title_font.render("Calendar", True, ui.ACCENT), (rect.left + int(20 * scale), rect.top + int(14 * scale)))
+        y = rect.top + int(64 * scale)
+
+        def line(text, font_obj=body_font, color=ui.TEXT_COLOR, indent=0):
+            nonlocal y
+            surface.blit(font_obj.render(text, True, color), (rect.left + int((20 + indent) * scale), y))
+            y += int((30 if font_obj is body_font else 24) * scale)
+
+        line(f"Quarter {self.quarter}, Week {self.week_in_quarter} of {WEEKS_PER_QUARTER}")
+        y += int(10 * scale)
+        line(f"This week: {self.active.name}'s turn")
+        next_member = self.members[self.week % len(self.members)] if self.members else None
+        if next_member:
+            line(f"Next week: {next_member.name}'s turn")
+        next_events = self.calendar.get(self.week + 1, [])
+        if next_events:
+            line("Scheduled:", small_font, ui.DIM_TEXT, indent=10)
+            for ev in next_events:
+                line(f"{ev['a']} & {ev['b']}: {ev['activity']} on {ev['day']}", small_font, ui.TEXT_COLOR, indent=20)
+        y += int(16 * scale)
+        line("After that, this quarter:")
+        quarter_end = self.quarter * WEEKS_PER_QUARTER
+        found_any = False
+        for w in range(self.week + 2, quarter_end + 1):
+            for ev in self.calendar.get(w, []):
+                found_any = True
+                line(f"Week {w}: {ev['a']} & {ev['b']} - {ev['activity']} on {ev['day']}",
+                     small_font, ui.TEXT_COLOR, indent=20)
+        if not found_any:
+            line("Nothing else scheduled yet.", small_font, ui.DIM_TEXT, indent=20)
 
     def draw(self, surface):
         surface.fill((26, 18, 32))
@@ -478,18 +757,24 @@ class PolyculeSimulator(Game):
         body_font = ui.font(24, scale)
         small_font = ui.font(20, scale)
 
-        if self.show_roster:
+        if self.overlay:
             rect = pygame.Rect(int(40 * scale), int(40 * scale), w - int(80 * scale), h - int(80 * scale))
-            self._draw_roster(surface, rect, scale)
-            hint = small_font.render("Tab to close", True, ui.DIM_TEXT)
+            if self.overlay == "roster":
+                self._draw_roster(surface, rect, scale)
+                hint_text = "Up/Down to scroll, Tab to close" if len(self.members) > 1 else "Tab to close"
+                hint = small_font.render(hint_text, True, ui.DIM_TEXT)
+            else:
+                self._draw_calendar(surface, rect, scale)
+                hint = small_font.render("C to close", True, ui.DIM_TEXT)
             surface.blit(hint, (rect.left + int(20 * scale), rect.bottom - int(34 * scale)))
             return
 
         panel, diagram, center, min_r, max_r, _ = self._network_geometry()
         ui.draw_panel(surface, panel, scale)
         y = panel.top + int(12 * scale)
-        surface.blit(small_font.render(f"Week {self.week} - {self.active.name}'s turn", True, ui.TEXT_COLOR),
-                     (panel.left + int(10 * scale), y))
+        surface.blit(small_font.render(
+            f"Q{self.quarter} W{self.week_in_quarter}/{WEEKS_PER_QUARTER} - {self.active.name}'s turn",
+            True, ui.TEXT_COLOR), (panel.left + int(10 * scale), y))
         y += int(26 * scale)
         bar_w = panel.width - int(20 * scale)
         ui.draw_bar(surface, pygame.Rect(panel.left + int(10 * scale), y, bar_w, int(12 * scale)), self.harmony, 100, (120, 220, 140))
@@ -508,26 +793,33 @@ class PolyculeSimulator(Game):
         surface.blit(title, (main_rect.left + int(20 * scale), main_rect.top + int(16 * scale)))
 
         content_top = main_rect.top + int(70 * scale)
-        content_bottom = main_rect.bottom - int(180 * scale)
+        content_bottom = main_rect.bottom - int(200 * scale)
         content_rect = pygame.Rect(main_rect.left + int(20 * scale), content_top,
                                     main_rect.width - int(40 * scale), max(0, content_bottom - content_top))
 
         if self.state == "target":
-            member = self.active
             surface.blit(body_font.render(f"Choose a target for {self.pending_card['name']}:", True, ui.TEXT_COLOR),
                          (content_rect.left, content_rect.top))
-            for i, name in enumerate(self.target_options):
-                color = ui.ACCENT if i == self.target_index else ui.TEXT_COLOR
-                opt_y = content_rect.top + int(50 * scale) + i * int(36 * scale)
-                if i == self.target_index:
-                    ui.draw_cursor(surface, (content_rect.left + int(2 * scale), opt_y + int(12 * scale)), size=int(10 * scale))
-                label = body_font.render(name, True, color)
-                surface.blit(label, (content_rect.left + int(24 * scale), opt_y))
+            labels = list(self.target_options)
+            list_bottom = self._draw_option_list(surface, content_rect, body_font, labels, self.target_index)
             hint = small_font.render("Enter to confirm, Backspace to cancel", True, ui.DIM_TEXT)
-            surface.blit(hint, (content_rect.left, content_rect.bottom - int(30 * scale)))
-        elif self.state == "result":
-            for i, line in enumerate(self.result_text):
-                surface.blit(body_font.render(line, True, ui.TEXT_COLOR),
+            surface.blit(hint, (content_rect.left, min(list_bottom + int(10 * scale), content_rect.bottom - int(6 * scale))))
+        elif self.state == "sub_choice":
+            prompts = {
+                "week": f"When should {self.active.name} plan with {self.pending_target}?",
+                "day": f"What day works for {self.pending_target}?",
+                "counter": f"{self.pending_target} can't do {self.proposed_day}.",
+                "activity": f"Where should {self.active.name} and {self.pending_target} go?",
+            }
+            surface.blit(body_font.render(prompts.get(self.sub_kind, "Choose:"), True, ui.TEXT_COLOR),
+                         (content_rect.left, content_rect.top))
+            labels = [label for label, _value in self.sub_options]
+            list_bottom = self._draw_option_list(surface, content_rect, body_font, labels, self.sub_index)
+            hint = small_font.render("Enter to confirm, Backspace to cancel", True, ui.DIM_TEXT)
+            surface.blit(hint, (content_rect.left, min(list_bottom + int(10 * scale), content_rect.bottom - int(6 * scale))))
+        elif self.state in ("result", "recap"):
+            for i, text_line in enumerate(self.result_text):
+                surface.blit(body_font.render(text_line, True, ui.TEXT_COLOR),
                              (content_rect.left, content_rect.top + i * int(32 * scale)))
             hint = small_font.render("Enter to continue", True, ui.DIM_TEXT)
             surface.blit(hint, (content_rect.left, content_rect.top + len(self.result_text) * int(32 * scale) + int(20 * scale)))
@@ -536,6 +828,29 @@ class PolyculeSimulator(Game):
             surface.blit(hint, (content_rect.left, content_rect.top))
 
         self._draw_hand_row(surface, main_rect, scale, body_font, small_font)
+
+    def _draw_option_list(self, surface, content_rect, body_font, labels, selected_index):
+        scale = ui.scale_factor(self.screen)
+        top = content_rect.top + int(50 * scale)
+        bottom = content_rect.bottom - int(36 * scale)
+        available = max(1, bottom - top)
+        n = max(1, len(labels))
+        size = 24
+        font_obj = body_font
+        while size > 12:
+            font_obj = ui.font(size, scale)
+            if (font_obj.get_height() + int(6 * scale)) * n <= available:
+                break
+            size -= 2
+        spacing = font_obj.get_height() + int(6 * scale)
+        for i, text in enumerate(labels):
+            color = ui.ACCENT if i == selected_index else ui.TEXT_COLOR
+            opt_y = top + i * spacing
+            if i == selected_index:
+                ui.draw_cursor(surface, (content_rect.left + int(2 * scale), opt_y + spacing // 2), size=int(10 * scale))
+            label = font_obj.render(text, True, color)
+            surface.blit(label, (content_rect.left + int(24 * scale), opt_y))
+        return top + n * spacing
 
     def _draw_hand_row(self, surface, main_rect, scale, body_font, small_font):
         options = self.hand + [END_WEEK]
