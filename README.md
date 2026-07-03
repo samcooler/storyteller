@@ -11,7 +11,8 @@ python3 -m venv .venv
 .venv/bin/python3 main.py
 ```
 
-Add `--fullscreen` to run fullscreen (handy on the Pi's touchscreen).
+By default it fills whatever display it's run on (auto-detected, true
+fullscreen). Pass `--windowed` for a smaller 1280x720 dev window instead.
 
 Note: on macOS, pygame currently only has prebuilt wheels up through
 Python 3.12 — if your default `python3` is newer, use `python3.12` to make
@@ -22,7 +23,9 @@ the venv.
 - Menu: Arrow keys to pick a game, Enter/Space to play, Esc to quit.
 - In a game: Esc returns to the menu.
 - Bonk the Billionaire: press 1-9 to bonk a hole, matching the number under it.
-- Polycule Simulator: Enter to advance, Up/Down or 1/2 to pick a choice, Enter to confirm.
+- Polycule Simulator: Left/Right to pick a card, Enter to play it (then
+  Up/Down + Enter to choose a target if needed, Backspace to cancel), Tab to
+  toggle the roster window.
 
 ## Adding a new game
 
@@ -50,7 +53,7 @@ there. Then, from the Pi's own desktop (not over SSH, since pygame needs the
 local display), run:
 
 ```
-cd ~/storyteller && python3 main.py --fullscreen
+cd ~/storyteller && python3 main.py
 ```
 
 To launch automatically on boot, we can add a systemd service or an autostart
