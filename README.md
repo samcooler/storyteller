@@ -21,6 +21,8 @@ the venv.
 
 - Menu: Arrow keys to pick a game, Enter/Space to play, Esc to quit.
 - In a game: Esc returns to the menu.
+- Bonk the Billionaire: press 1-9 to bonk a hole, matching the number under it.
+- Polycule Simulator: Enter to advance, Up/Down or 1/2 to pick a choice, Enter to confirm.
 
 ## Adding a new game
 
