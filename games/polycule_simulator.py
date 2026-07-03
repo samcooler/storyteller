@@ -824,8 +824,9 @@ class PolyculeSimulator(Game):
             hint = small_font.render("Enter to continue", True, ui.DIM_TEXT)
             surface.blit(hint, (content_rect.left, content_rect.top + len(self.result_text) * int(32 * scale) + int(20 * scale)))
         else:
-            hint = body_font.render("Pick a card to play, or End Week when you're done.", True, ui.TEXT_COLOR)
-            surface.blit(hint, (content_rect.left, content_rect.top))
+            ui.blit_wrapped(surface, body_font, "Pick a card to play, or End Week when you're done.",
+                             ui.TEXT_COLOR, content_rect.left + content_rect.width // 2, content_rect.top,
+                             content_rect.width)
 
         self._draw_hand_row(surface, main_rect, scale, body_font, small_font)
 

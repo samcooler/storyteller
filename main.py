@@ -7,6 +7,7 @@ from games import GAMES
 from games import ui
 
 FPS = 60
+INTERNAL_SIZE = (640, 480)  # real, low render resolution - upscaled with square pixels
 
 BG = (18, 18, 24)
 FG = (240, 240, 240)
@@ -19,10 +20,19 @@ def create_screen():
     --windowed forces a smaller dev-friendly window instead.
     """
     if os.environ.get("SDL_VIDEODRIVER") == "dummy":
-        return pygame.display.set_mode((1280, 720))
+        return pygame.display.set_mode((1280, 960))
     if "--windowed" in sys.argv:
-        return pygame.display.set_mode((1280, 720))
+        return pygame.display.set_mode((1280, 960))
     return pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
+
+
+def fit_rect(display_size, internal_size):
+    """Largest same-aspect rect of internal_size that fits centered in display_size."""
+    dw, dh = display_size
+    iw, ih = internal_size
+    scale = max(1, int(min(dw / iw, dh / ih)))
+    tw, th = iw * scale, ih * scale
+    return pygame.Rect((dw - tw) // 2, (dh - th) // 2, tw, th)
 
 
 class Menu:
@@ -75,7 +85,11 @@ def main():
     pygame.mouse.set_visible(False)
     clock = pygame.time.Clock()
 
-    menu = Menu(screen, GAMES)
+    render_surface = pygame.Surface(INTERNAL_SIZE).convert()
+    dest_rect = fit_rect(screen.get_size(), INTERNAL_SIZE)
+    render_scale = dest_rect.width / INTERNAL_SIZE[0]
+
+    menu = Menu(render_surface, GAMES)
     active_game = None
 
     running = True
@@ -85,7 +99,14 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+                continue
+            if event.type in (pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP, pygame.MOUSEMOTION):
+                ex, ey = event.pos
+                ix = (ex - dest_rect.left) / render_scale
+                iy = (ey - dest_rect.top) / render_scale
+                event = pygame.event.Event(event.type, {**event.dict, "pos": (ix, iy)})
+
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if active_game is None:
                     running = False
                 else:
@@ -93,17 +114,19 @@ def main():
             elif active_game is None:
                 chosen = menu.handle_event(event)
                 if chosen is not None:
-                    active_game = chosen(screen)
+                    active_game = chosen(render_surface)
                     active_game.reset()
             else:
                 active_game.handle_event(event)
 
         if active_game is None:
-            menu.draw(screen)
+            menu.draw(render_surface)
         else:
             active_game.update(dt)
-            active_game.draw(screen)
+            active_game.draw(render_surface)
 
+        screen.fill((0, 0, 0))
+        pygame.transform.scale(render_surface, dest_rect.size, screen.subsurface(dest_rect))
         pygame.display.flip()
 
     pygame.quit()
