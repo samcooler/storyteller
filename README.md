@@ -25,7 +25,6 @@ the venv.
 
 - Menu: Arrow keys to pick a game, Enter/Space to play, Esc to quit.
 - In a game: Esc returns to the menu.
-- Bonk the Billionaire: press 1-9 to bonk a hole, matching the number under it.
 - Polycule Simulator: Left/Right to pick a card, Enter to play it (then
   Up/Down + Enter to choose a target if needed, Backspace to cancel), Tab for
   the roster window, C for the calendar.
