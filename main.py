@@ -54,7 +54,7 @@ class Menu:
     def draw(self, surface):
         surface.fill(BG)
         scale = ui.scale_factor(surface)
-        title_font = ui.font(64, scale)
+        title_font = ui.font(64, scale, title=True)
         item_font = ui.font(40, scale)
         hint_font = ui.font(24, scale)
 

@@ -4,6 +4,8 @@ Everything here takes a `scale` factor (see `scale_factor`) so the same
 drawing code looks right on a small Pi touchscreen and a 4K monitor.
 """
 
+from pathlib import Path
+
 import pygame
 
 PASTEL_TOP = (58, 40, 74)
@@ -17,16 +19,46 @@ ACCENT = (255, 200, 235)
 REFERENCE_DIM = 480  # the short edge of our original 800x480 target
 _font_cache = {}
 
+FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
+BODY_FONT_PATH = FONT_DIR / "VT323-Regular.ttf"
+TITLE_FONT_PATH = FONT_DIR / "PressStart2P-Regular.ttf"
+TITLE_SIZE_RATIO = 0.4  # Press Start 2P is much wider per glyph than VT323
+
+
+class PixelFont:
+    """Wraps a pygame Font so every render() is hard-edged (no anti-aliasing),
+    regardless of what the antialias argument the caller passes."""
+
+    __slots__ = ("_font",)
+
+    def __init__(self, font_obj):
+        self._font = font_obj
+
+    def render(self, text, _antialias, color):
+        return self._font.render(text, False, color)
+
+    def size(self, text):
+        return self._font.size(text)
+
+    def get_height(self):
+        return self._font.get_height()
+
 
 def scale_factor(surface):
     return min(surface.get_size()) / REFERENCE_DIM
 
 
-def font(size, scale):
-    key = max(8, int(size * scale))
+def font(size, scale, title=False):
+    path = TITLE_FONT_PATH if title else BODY_FONT_PATH
+    point_size = size * TITLE_SIZE_RATIO if title else size
+    key = (str(path), max(6, int(point_size * scale)))
     cached = _font_cache.get(key)
     if cached is None:
-        cached = pygame.font.SysFont(None, key)
+        try:
+            raw = pygame.font.Font(str(path), key[1])
+        except (FileNotFoundError, OSError):
+            raw = pygame.font.SysFont(None, key[1])
+        cached = PixelFont(raw)
         _font_cache[key] = cached
     return cached
 

@@ -672,7 +672,7 @@ class PolyculeSimulator(Game):
 
     def _draw_roster(self, surface, rect, scale):
         ui.draw_panel(surface, rect, scale)
-        title_font = ui.font(30, scale)
+        title_font = ui.font(30, scale, title=True)
         body_font = ui.font(20, scale)
         small_font = ui.font(15, scale)
         surface.blit(title_font.render("Roster", True, ui.ACCENT), (rect.left + int(20 * scale), rect.top + int(14 * scale)))
@@ -715,7 +715,7 @@ class PolyculeSimulator(Game):
 
     def _draw_calendar(self, surface, rect, scale):
         ui.draw_panel(surface, rect, scale)
-        title_font = ui.font(30, scale)
+        title_font = ui.font(30, scale, title=True)
         body_font = ui.font(22, scale)
         small_font = ui.font(18, scale)
         surface.blit(title_font.render("Calendar", True, ui.ACCENT), (rect.left + int(20 * scale), rect.top + int(14 * scale)))
@@ -753,7 +753,7 @@ class PolyculeSimulator(Game):
         surface.fill((26, 18, 32))
         w, h = surface.get_size()
         scale = ui.scale_factor(surface)
-        title_font = ui.font(34, scale)
+        title_font = ui.font(34, scale, title=True)
         body_font = ui.font(24, scale)
         small_font = ui.font(20, scale)
 
