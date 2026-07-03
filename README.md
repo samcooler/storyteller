@@ -33,11 +33,23 @@ That's it — it shows up in the menu automatically.
 
 ## Deploying to the Raspberry Pi
 
-1. Enable SSH on the Pi (Raspberry Pi Imager -> settings, or
-   `sudo raspi-config` -> Interface Options -> SSH).
-2. Copy this repo over, e.g. `git clone` it on the Pi, or `rsync`/`scp` it.
-3. On the Pi: `sudo apt install python3-pygame` (or use pip in a venv).
-4. Run `python3 main.py --fullscreen`.
+The Pi (`storyteller-pi` in `~/.ssh/config`) has a bare git repo at
+`~/git_repos/storyteller.git` and a working copy checked out at
+`~/storyteller`, with `python3-pygame` already installed via apt.
+
+To ship local changes over:
+
+```
+./deploy.sh
+```
+
+This pushes the current branch to the Pi and pulls it into the working copy
+there. Then, from the Pi's own desktop (not over SSH, since pygame needs the
+local display), run:
+
+```
+cd ~/storyteller && python3 main.py --fullscreen
+```
 
 To launch automatically on boot, we can add a systemd service or an autostart
 entry later once there's more than one game worth showing off.
