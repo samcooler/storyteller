@@ -1,0 +1,127 @@
+[
+  {
+    "file": "location_01.png",
+    "location": "Redwood grove",
+    "visual_cues": "Towering redwoods, fern-covered trail, dappled light"
+  },
+  {
+    "file": "location_02.png",
+    "location": "Board game caf\u00e9",
+    "visual_cues": "Shelves of games, table with meeples/cards, warm lighting"
+  },
+  {
+    "file": "location_03.png",
+    "location": "Rooftop greenhouse bar",
+    "visual_cues": "Glass walls, hanging plants, skyline at dusk"
+  },
+  {
+    "file": "location_04.png",
+    "location": "Community makerspace",
+    "visual_cues": "Electronics bench, tools, soldering station, robot parts"
+  },
+  {
+    "file": "location_05.png",
+    "location": "Retro arcade",
+    "visual_cues": "CRT cabinets, neon lighting, dark room"
+  },
+  {
+    "file": "location_06.png",
+    "location": "Pottery studio",
+    "visual_cues": "Clay wheels, shelves of ceramics, aprons, sunlit workshop"
+  },
+  {
+    "file": "location_07.png",
+    "location": "Tide pools",
+    "visual_cues": "Rocky shoreline, shallow pools, starfish and seaweed"
+  },
+  {
+    "file": "location_08.png",
+    "location": "Food truck courtyard",
+    "visual_cues": "Picnic tables, string lights, colorful truck"
+  },
+  {
+    "file": "location_09.png",
+    "location": "Independent bookstore",
+    "visual_cues": "Floor-to-ceiling bookshelves, reading chair, cozy plants"
+  },
+  {
+    "file": "location_10.png",
+    "location": "Warehouse art gallery",
+    "visual_cues": "Large colorful canvases, concrete floor, open industrial space"
+  },
+  {
+    "file": "location_11.png",
+    "location": "Bay overlook observatory hill",
+    "visual_cues": "Bench, city lights, stars overhead"
+  },
+  {
+    "file": "location_12.png",
+    "location": "Succulent botanical garden",
+    "visual_cues": "Desert plants, greenhouse dome, winding path"
+  },
+  {
+    "file": "location_13.png",
+    "location": "Roller disco",
+    "visual_cues": "Disco ball, glowing rink, skaters"
+  },
+  {
+    "file": "location_14.png",
+    "location": "Fiber arts co-op",
+    "visual_cues": "Yarn, knitting/crochet circle, handmade wall hangings"
+  },
+  {
+    "file": "location_15.png",
+    "location": "Hidden Japanese tea house",
+    "visual_cues": "Small pavilion, bridge, lanterns, koi pond"
+  },
+  {
+    "file": "location_16.png",
+    "location": "Ferry at sunset",
+    "visual_cues": "Bay water, skyline, open passenger deck"
+  },
+  {
+    "file": "location_17.png",
+    "location": "Night market",
+    "visual_cues": "Lanterns, food stalls, bustling crowd"
+  },
+  {
+    "file": "location_18.png",
+    "location": "Eclectic antique shop",
+    "visual_cues": "Curio cabinets, globe, vintage furniture, odd collectibles"
+  },
+  {
+    "file": "location_19.png",
+    "location": "Natural hot springs",
+    "visual_cues": "Steaming pools, lanterns, forest at night"
+  },
+  {
+    "file": "location_20.png",
+    "location": "Kite festival",
+    "visual_cues": "Hilltop meadow, colorful kites, picnic blankets"
+  },
+  {
+    "file": "location_21.png",
+    "location": "Tiny jazz club",
+    "visual_cues": "Upright bass, piano, candlelit audience"
+  },
+  {
+    "file": "location_22.png",
+    "location": "Lavender farm picnic",
+    "visual_cues": "Purple rows of flowers, blanket, string lights"
+  },
+  {
+    "file": "location_23.png",
+    "location": "Oddities museum",
+    "visual_cues": "Skeletons, preserved curiosities, antique display cases"
+  },
+  {
+    "file": "location_24.png",
+    "location": "Glassblowing studio",
+    "visual_cues": "Furnace, glowing glass, artisan at work"
+  },
+  {
+    "file": "location_25.png",
+    "location": "Desert art installation",
+    "visual_cues": "Giant illuminated crystals, nighttime desert gathering"
+  }
+]

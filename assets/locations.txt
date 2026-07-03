@@ -1,0 +1,80 @@
+Here’s the matching table for the 5×5 grid, reading left-to-right, top-to-bottom.
+#
+Location
+Visual cues
+1
+Redwood grove
+Towering redwoods, fern-covered trail, dappled light
+2
+Board game café
+Shelves of games, table with meeples/cards, warm lighting
+3
+Rooftop greenhouse bar
+Glass walls, hanging plants, skyline at dusk
+4
+Community makerspace
+Electronics bench, tools, soldering station, robot parts
+5
+Retro arcade
+CRT cabinets, neon lighting, dark room
+6
+Pottery studio
+Clay wheels, shelves of ceramics, aprons, sunlit workshop
+7
+Tide pools
+Rocky shoreline, shallow pools, starfish and seaweed
+8
+Food truck courtyard
+Picnic tables, string lights, colorful truck
+9
+Independent bookstore
+Floor-to-ceiling bookshelves, reading chair, cozy plants
+10
+Warehouse art gallery
+Large colorful canvases, concrete floor, open industrial space
+11
+Bay overlook observatory hill
+Bench, city lights, stars overhead
+12
+Succulent botanical garden
+Desert plants, greenhouse dome, winding path
+13
+Roller disco
+Disco ball, glowing rink, skaters
+14
+Fiber arts co-op
+Yarn, knitting/crochet circle, handmade wall hangings
+15
+Hidden Japanese tea house
+Small pavilion, bridge, lanterns, koi pond
+16
+Ferry at sunset
+Bay water, skyline, open passenger deck
+17
+Night market
+Lanterns, food stalls, bustling crowd
+18
+Eclectic antique shop
+Curio cabinets, globe, vintage furniture, odd collectibles
+19
+Natural hot springs
+Steaming pools, lanterns, forest at night
+20
+Kite festival
+Hilltop meadow, colorful kites, picnic blankets
+21
+Tiny jazz club
+Upright bass, piano, candlelit audience
+22
+Lavender farm picnic
+Purple rows of flowers, blanket, string lights
+23
+Oddities museum
+Skeletons, preserved curiosities, antique display cases
+24
+Glassblowing studio
+Furnace, glowing glass, artisan at work
+25
+Desert art installation
+Giant illuminated crystals, nighttime desert gathering
+I think these will read well even at RPG scale because each scene has one or two iconic silhouettes: the redwood trunks, arcade cabinets, greenhouse roof, disco ball, ferry, hot springs, crystal sculpture, etc. Those distinctive shapes will survive heavy pixelation much better than realistic detail.
