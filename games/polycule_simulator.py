@@ -406,6 +406,15 @@ class PolyculeSimulator(Game):
         safe to call every frame (draw/discard previews)."""
         return card["blurb"].format(**PREVIEW_PLACEHOLDERS)
 
+    @staticmethod
+    def _card_face(card):
+        """(display name, display blurb) - Events are random things that happen
+        to you, so they stay a mystery in hand/draw/discard previews and only
+        reveal their real name and blurb once actually played."""
+        if card["class"] == "events":
+            return "???", "Something's about to happen."
+        return card["name"], None
+
     def _spend_energy(self):
         active = self.active
         active.statuses["energy"] = max(0, active.statuses["energy"] - ENERGY_COST)
@@ -1227,14 +1236,18 @@ class PolyculeSimulator(Game):
 
         self._draw_network(surface, center, scale)
 
-        main_rect = pygame.Rect(panel.right + int(16 * scale), int(16 * scale),
-                                 w - panel.width - int(48 * scale), h - int(32 * scale))
-        ui.draw_panel(surface, main_rect, scale, corner_style="diamond")
+        title_h = title_font.get_height()
+        title_gap = int(10 * scale)
+        main_top = int(16 * scale) + title_h + title_gap
+        main_rect = pygame.Rect(panel.right + int(16 * scale), main_top,
+                                 w - panel.width - int(48 * scale), h - int(32 * scale) - title_h - title_gap)
 
         title = title_font.render(self.name, True, ui.ACCENT)
-        surface.blit(title, (main_rect.left + int(20 * scale), main_rect.top + int(16 * scale)))
+        surface.blit(title, (main_rect.left, int(16 * scale)))
 
-        content_top = main_rect.top + int(70 * scale)
+        ui.draw_panel(surface, main_rect, scale, corner_style="diamond")
+
+        content_top = main_rect.top + int(20 * scale)
         content_bottom = main_rect.bottom - int(200 * scale)
         content_rect = pygame.Rect(main_rect.left + int(20 * scale), content_top,
                                     main_rect.width - int(40 * scale), max(0, content_bottom - content_top))
@@ -1414,13 +1427,15 @@ class PolyculeSimulator(Game):
             ui.draw_panel(surface, rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=tint)
             pad = int(8 * scale)
             y = rect.top + pad
-            name_lines = ui.wrap_text(name_font, card["name"], rect.width - pad * 2)
-            ui.blit_wrapped(surface, name_font, card["name"], ui.TEXT_COLOR, rect.centerx, y, rect.width - pad * 2)
+            display_name, display_blurb = self._card_face(card)
+            name_lines = ui.wrap_text(name_font, display_name, rect.width - pad * 2)
+            ui.blit_wrapped(surface, name_font, display_name, ui.TEXT_COLOR, rect.centerx, y, rect.width - pad * 2)
             y += len(name_lines) * int(name_font.get_height() * 1.15) + int(2 * scale)
             kind_label = kind_font.render(label, True, tint)
             surface.blit(kind_label, kind_label.get_rect(midtop=(rect.centerx, y)))
             y += kind_label.get_height() + int(6 * scale)
-            for line in ui.wrap_text(blurb_font, self._preview_blurb(card), rect.width - pad * 2):
+            blurb_text = display_blurb if display_blurb is not None else self._preview_blurb(card)
+            for line in ui.wrap_text(blurb_font, blurb_text, rect.width - pad * 2):
                 if y + blurb_font.get_height() > rect.bottom - pad:
                     break
                 label = blurb_font.render(line, True, ui.DIM_TEXT)
@@ -1503,28 +1518,87 @@ class PolyculeSimulator(Game):
             if achieved:
                 pygame.draw.rect(surface, ui.ACCENT, rect, width=max(1, int(2 * scale)))
 
-    def _draw_hand_row(self, surface, main_rect, scale, body_font, small_font):
-        options = list(self.hand) if self.state == "discard" else self.hand + [END_WEEK]
-        if not options:
-            return
-        gap = int(14 * scale)
-        available = main_rect.width - int(40 * scale) - gap * (len(options) - 1)
-        card_w = min(int(150 * scale), available // len(options))
-        card_h = card_w + int(25 * scale)
-        total_w = len(options) * card_w + (len(options) - 1) * gap
-        start_x = main_rect.centerx - total_w // 2
-        y = main_rect.bottom - card_h - int(20 * scale)
+    def _hand_card_surface(self, card, card_w, card_h, scale, selected):
+        """Renders one hand card onto its own per-pixel-alpha surface so it can
+        be rotated for the fan layout without leaving black corners."""
+        card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
+        rect = pygame.Rect(0, 0, card_w, card_h)
+        top_color = (110, 70, 130) if selected else ui.PASTEL_TOP
+        bottom_color = (150, 90, 160) if selected else ui.PASTEL_BOTTOM
+        border = ui.ACCENT if selected else ui.BORDER_OUTER
+        ui.draw_panel(card_surf, rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=border)
+        display_name, _blurb = self._card_face(card)
+        name_font = ui.font(min(15, max(10, card_w // 11)), scale)
+        ui.blit_wrapped(card_surf, name_font, display_name, ui.TEXT_COLOR,
+                         rect.centerx, rect.top + int(10 * scale), card_w - int(12 * scale))
+        kind_font = ui.font(14, scale)
+        kind_label = kind_font.render(self._card_label(card), True, ui.DIM_TEXT)
+        card_surf.blit(kind_label, kind_label.get_rect(midbottom=(rect.centerx, rect.bottom - int(8 * scale))))
+        return card_surf
 
-        for i, card in enumerate(options):
-            rect = pygame.Rect(start_x + i * (card_w + gap), y, card_w, card_h)
-            selected = self.state in ("hand", "discard") and i == self.hand_index
+    def _draw_hand_row(self, surface, main_rect, scale, body_font, small_font):
+        cards = list(self.hand)
+        show_end_button = self.state != "discard"
+        nav_options = cards + [END_WEEK] if show_end_button else cards
+        if not cards and not show_end_button:
+            return
+
+        card_w = int(150 * scale)
+        card_h = card_w + int(25 * scale)
+        shadow_off = (int(6 * scale), int(8 * scale))
+        margin = int(20 * scale)
+
+        button_h = int(46 * scale) if show_end_button else 0
+        button_gap = int(14 * scale) if show_end_button else 0
+        row_bottom = main_rect.bottom - margin - button_h - button_gap
+        row_base_y = row_bottom - card_h
+
+        n = len(cards)
+        if n:
+            max_spread = main_rect.width - int(40 * scale)
+            step = card_w if n == 1 else min(
+                card_w + int(14 * scale),
+                max(card_w * 0.34, (max_spread - card_w) / (n - 1)),
+            )
+            total_w = card_w + step * (n - 1)
+            start_x = main_rect.centerx - total_w / 2
+            arc = int(14 * scale)
+            max_rot = 6.0
+            selected_i = self.hand_index if self.state in ("hand", "discard") and self.hand_index < n else None
+
+            draw_order = [i for i in range(n) if i != selected_i] + ([selected_i] if selected_i is not None else [])
+            for i in draw_order:
+                card = cards[i]
+                t = (i - (n - 1) / 2) / max(1, (n - 1) / 2) if n > 1 else 0.0
+                cx = start_x + i * step + card_w / 2
+                cy = row_base_y + arc * (t ** 2) + card_h / 2
+                angle = -t * max_rot
+                selected = i == selected_i
+                if selected:
+                    cy -= int(16 * scale)
+                card_surf = self._hand_card_surface(card, card_w, card_h, scale, selected)
+                rotated = pygame.transform.rotate(card_surf, angle)
+                shadow = pygame.Surface(card_surf.get_size(), pygame.SRCALPHA)
+                shadow.fill((0, 0, 0, 100))
+                shadow = pygame.transform.rotate(shadow, angle)
+                shadow_rect = shadow.get_rect(center=(cx + shadow_off[0], cy + shadow_off[1]))
+                surface.blit(shadow, shadow_rect)
+                rotated_rect = rotated.get_rect(center=(cx, cy))
+                surface.blit(rotated, rotated_rect)
+
+        if show_end_button:
+            btn_w = int(150 * scale)
+            btn_rect = pygame.Rect(main_rect.centerx - btn_w // 2, main_rect.bottom - margin - button_h,
+                                    btn_w, button_h)
+            selected = self.state == "hand" and self.hand_index == n
+            shadow_rect = btn_rect.move(shadow_off[0], shadow_off[1])
+            shadow_surf = pygame.Surface(btn_rect.size, pygame.SRCALPHA)
+            shadow_surf.fill((0, 0, 0, 100))
+            surface.blit(shadow_surf, shadow_rect)
             top_color = (110, 70, 130) if selected else ui.PASTEL_TOP
             bottom_color = (150, 90, 160) if selected else ui.PASTEL_BOTTOM
             border = ui.ACCENT if selected else ui.BORDER_OUTER
-            ui.draw_panel(surface, rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=border)
-            name_font = ui.font(min(15, max(10, card_w // 11)), scale)
-            ui.blit_wrapped(surface, name_font, card["name"], ui.TEXT_COLOR,
-                             rect.centerx, rect.top + int(10 * scale), card_w - int(12 * scale))
-            kind_font = ui.font(14, scale)
-            kind_label = kind_font.render(self._card_label(card), True, ui.DIM_TEXT)
-            surface.blit(kind_label, kind_label.get_rect(midbottom=(rect.centerx, rect.bottom - int(8 * scale))))
+            ui.draw_panel(surface, btn_rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=border)
+            label_font = ui.font(18, scale)
+            label = label_font.render(END_WEEK["name"], True, ui.TEXT_COLOR)
+            surface.blit(label, label.get_rect(center=btn_rect.center))
