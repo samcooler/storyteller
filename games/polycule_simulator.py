@@ -134,8 +134,8 @@ def stat_flavor(key, value):
 COMMIT_THRESHOLD = 70
 MAX_PROSPECTS_PER_MEMBER = 3
 DRAW_MAX = 3
-HAND_CAP = 7
-DISCARD_TO = 4
+MAX_HAND = 5
+TURN_STEPS = ["Draw", "Discard", "Play"]
 WEEKS_PER_QUARTER = 12
 ENERGY_COST = 15
 START_MEMBERS = 2
@@ -324,10 +324,12 @@ class PolyculeSimulator(Game):
         return pool
 
     def _start_turn(self, member):
+        # Always draw up to DRAW_MAX regardless of current hand size - the
+        # mandatory discard step right after draw brings the hand back down
+        # to MAX_HAND before play, so there's no need to cap the draw itself.
         pool = self._eligible_cards(member)
         available = [c for c in pool if not any(c is h for h in member.hand)]
-        room = HAND_CAP - len(member.hand)
-        n = max(0, min(DRAW_MAX, room, len(available)))
+        n = max(0, min(DRAW_MAX, len(available)))
         drawn = self.rng.sample(available, n) if n else []
         member.hand.extend(drawn)
         self.hand = member.hand
@@ -649,13 +651,6 @@ class PolyculeSimulator(Game):
             f"Trust {trust_d:+d}, Spark {spark_d:+d}.",
         ]
 
-    def _request_end_turn(self):
-        if len(self.hand) > DISCARD_TO:
-            self.state = "discard"
-            self.hand_index = 0
-        else:
-            self._finish_turn()
-
     def _finish_turn(self):
         self.week += 1
         events = self.calendar.pop(self.week, [])
@@ -696,7 +691,10 @@ class PolyculeSimulator(Game):
             return
         if self.state == "draw":
             if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                self.state = "hand"
+                if len(self.hand) > MAX_HAND:
+                    self.state = "discard"
+                else:
+                    self.state = "hand"
                 self.hand_index = 0
         elif self.state == "discard":
             if event.key in (pygame.K_LEFT, pygame.K_a):
@@ -707,8 +705,8 @@ class PolyculeSimulator(Game):
                 card = self.hand[self.hand_index]
                 self.hand.remove(card)
                 self.hand_index = 0
-                if len(self.hand) <= DISCARD_TO:
-                    self._finish_turn()
+                if len(self.hand) <= MAX_HAND:
+                    self.state = "hand"
         elif self.state == "hand":
             options = self.hand + [END_WEEK]
             if event.key in (pygame.K_LEFT, pygame.K_a):
@@ -718,7 +716,7 @@ class PolyculeSimulator(Game):
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 card = options[self.hand_index]
                 if card is END_WEEK:
-                    self._request_end_turn()
+                    self._finish_turn()
                 elif card["class"] == "choice" or (card["class"] == "dates" and card.get("scope") == "pair"):
                     targets = self._card_targets(card)
                     if not targets:
@@ -1247,7 +1245,13 @@ class PolyculeSimulator(Game):
 
         ui.draw_panel(surface, main_rect, scale, corner_style="diamond")
 
+        step_index = {"draw": 0, "discard": 1}.get(self.state, 2 if self.state in ("hand", "target", "sub_choice", "result") else None)
         content_top = main_rect.top + int(20 * scale)
+        if step_index is not None:
+            step_row_h = int(30 * scale)
+            self._draw_step_row(surface, pygame.Rect(main_rect.left + int(20 * scale), content_top,
+                                                       main_rect.width - int(40 * scale), step_row_h), scale, step_index)
+            content_top += step_row_h + int(14 * scale)
         content_bottom = main_rect.bottom - int(200 * scale)
         content_rect = pygame.Rect(main_rect.left + int(20 * scale), content_top,
                                     main_rect.width - int(40 * scale), max(0, content_bottom - content_top))
@@ -1293,8 +1297,6 @@ class PolyculeSimulator(Game):
         elif self.state == "draw":
             if self.drawn_cards:
                 msg = f"{self.active.name} draws {len(self.drawn_cards)} card(s):"
-            elif len(self.active.hand) >= HAND_CAP:
-                msg = f"{self.active.name}'s hand is full ({HAND_CAP} cards) - nothing new to draw."
             else:
                 msg = f"{self.active.name} has no new cards to draw right now."
             ui.blit_wrapped(surface, body_font, msg, ui.TEXT_COLOR,
@@ -1304,18 +1306,23 @@ class PolyculeSimulator(Game):
                 tiles_rect = pygame.Rect(content_rect.left, tiles_top,
                                           content_rect.width, max(0, content_rect.bottom - tiles_top - int(22 * scale)))
                 self._draw_card_tiles(surface, tiles_rect, self.drawn_cards, scale, badge="NEW")
-            hint = small_font.render("Enter to continue", True, ui.DIM_TEXT)
+            if len(self.hand) > MAX_HAND:
+                hint_text = f"Enter to continue - discard down to {MAX_HAND} cards next."
+            else:
+                hint_text = "Enter to continue to your turn."
+            hint = small_font.render(hint_text, True, ui.DIM_TEXT)
             surface.blit(hint, (content_rect.left, content_rect.bottom - int(16 * scale)))
         elif self.state == "discard":
-            over_by = len(self.hand) - DISCARD_TO
-            msg = f"Hand over the limit - discard {over_by} more down to {DISCARD_TO}."
+            over_by = len(self.hand) - MAX_HAND
+            msg = f"Hand over the limit - discard {over_by} more down to {MAX_HAND}."
             ui.blit_wrapped(surface, body_font, msg, ui.TEXT_COLOR,
                              content_rect.left + content_rect.width // 2, content_rect.top, content_rect.width)
             bar_top = content_rect.top + int(28 * scale)
             bar_rect = pygame.Rect(content_rect.left, bar_top, content_rect.width, max(4, int(10 * scale)))
             bar_color = (230, 90, 90) if over_by > 0 else (150, 220, 150)
-            ui.draw_bar(surface, bar_rect, len(self.hand), HAND_CAP, bar_color)
-            tick_x = bar_rect.left + int(bar_rect.width * (DISCARD_TO / HAND_CAP))
+            bar_max = MAX_HAND + DRAW_MAX
+            ui.draw_bar(surface, bar_rect, len(self.hand), bar_max, bar_color)
+            tick_x = bar_rect.left + int(bar_rect.width * (MAX_HAND / bar_max))
             pygame.draw.line(surface, ui.ACCENT, (tick_x, bar_rect.top - int(3 * scale)),
                               (tick_x, bar_rect.bottom + int(3 * scale)), max(1, int(2 * scale)))
             if self.hand:
@@ -1501,6 +1508,34 @@ class PolyculeSimulator(Game):
             label_surf = label_font.render(label, True, ui.TEXT_COLOR)
             surface.blit(label_surf, label_surf.get_rect(center=rect.center))
         return content_rect.top + card_h
+
+    def _draw_step_row(self, surface, rect, scale, current_index):
+        """Breadcrumb across the top of the main window showing where this turn
+        is in the Draw -> Discard -> Play sequence: done steps filled and dim,
+        the current step outlined in the accent color, future steps hollow."""
+        n = len(TURN_STEPS)
+        dot_r = int(7 * scale)
+        label_font = ui.font(15, scale)
+        gap = (rect.width - dot_r * 2) / max(1, n - 1)
+        cy = rect.top + dot_r
+        centers = [rect.left + dot_r + int(i * gap) for i in range(n)]
+        for i in range(n - 1):
+            line_color = ui.ACCENT if i < current_index else ui.DIM_TEXT
+            pygame.draw.line(surface, line_color, (centers[i] + dot_r, cy), (centers[i + 1] - dot_r, cy),
+                              max(1, int(2 * scale)))
+        for i, label in enumerate(TURN_STEPS):
+            cx = centers[i]
+            if i == current_index:
+                pygame.draw.circle(surface, ui.ACCENT, (cx, cy), dot_r + int(2 * scale))
+                pygame.draw.circle(surface, ui.BG, (cx, cy), dot_r)
+            elif i < current_index:
+                pygame.draw.circle(surface, ui.DIM_TEXT, (cx, cy), dot_r)
+            else:
+                pygame.draw.circle(surface, ui.BG, (cx, cy), dot_r)
+                pygame.draw.circle(surface, ui.DIM_TEXT, (cx, cy), dot_r, width=max(1, int(2 * scale)))
+            color = ui.ACCENT if i == current_index else ui.DIM_TEXT
+            text = label_font.render(label, True, color)
+            surface.blit(text, text.get_rect(midtop=(cx, cy + dot_r + int(4 * scale))))
 
     def _draw_tier_meter(self, surface, content_rect, scale, tier):
         """10-segment red-to-green meter showing where a roll landed on OUTCOME_TIERS,
