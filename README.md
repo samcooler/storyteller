@@ -12,10 +12,10 @@ python3 -m venv .venv
 ```
 
 By default it fills whatever display it's run on (auto-detected, true
-fullscreen). Pass `--windowed` for a 1600x1200 dev window instead.
-Everything renders internally at a fixed 1600x1200 and is upscaled with square
-pixels (integer scale only, so it stays crisp) — keeps it fast on the Pi
-regardless of the actual display resolution.
+fullscreen). Pass `--windowed` for a 1920x1080 dev window instead.
+Everything renders internally at a fixed 1920x1080 (16:9, matching the Pi's
+monitor) and is upscaled with square pixels (integer scale only, so it stays
+crisp) — keeps it fast on the Pi regardless of the actual display resolution.
 
 Note: on macOS, pygame currently only has prebuilt wheels up through
 Python 3.12 — if your default `python3` is newer, use `python3.12` to make
@@ -76,29 +76,17 @@ entry later once there's more than one game worth showing off.
 
 ### Matching the Pi's HDMI output to the 4K monitor
 
-`fit_rect` in `main.py` only ever scales the internal 1600x1200 render surface
-by a whole number (so pixel art stays crisp), so whatever the actual display
-resolution is, the game fills it exactly only when that resolution is a clean
-multiple of 1600x1200. Left at the monitor's native 4K (3840x2160), the best
-whole-number fit is 2x (3200x2400), leaving a visible black letterboxed
-border on all sides.
+`fit_rect` in `main.py` only ever scales the internal render surface by a
+whole number (so pixel art stays crisp), so the game fills the display
+exactly only when the display resolution is a clean multiple of the internal
+size. The internal size is 1920x1080 (16:9) specifically because the Dell
+U3219Q's native 4K output, 3840x2160, is exactly 2x that — so running at the
+monitor's native resolution already gives a perfect edge-to-edge fit with no
+letterboxing and no kanshi/`config.txt` workaround needed.
 
-This is a physical Pi setting, not part of the repo. The Pi runs the modern
-`labwc` (Wayland) desktop with full KMS (`vc4-kms-v3d`), so the classic
-`hdmi_group`/`hdmi_mode` firmware options in `config.txt` don't apply here —
-output mode is instead managed by `kanshi`, the Wayland output daemon labwc
-already runs. Force the lower resolution with a `kanshi` profile:
-
-`~/.config/kanshi/config`:
-```
-profile {
-	output HDMI-A-1 mode 1600x1200@60.00Hz position 0,0
-}
-```
-
-That's exactly 1x the 1600x1200 internal render size (confirmed available via
-`wlr-randr` on the Dell U3219Q here), so the game fills the screen
-edge-to-edge with no letterboxing — and at 1x scale there's no upscaling
-blur at all, just native pixels. Apply it immediately with
-`pkill -HUP kanshi` (no reboot needed) — it also takes effect automatically
-on future logins since kanshi re-reads this file on start.
+(Earlier the internal size was a 4:3 resolution, which either got pillarboxed
+or stretched on this 16:9 panel and needed a `kanshi` profile forcing a
+non-native mode to fit cleanly. That's no longer necessary — if a `kanshi`
+profile forcing a custom mode is still present in
+`~/.config/kanshi/config` on the Pi from that era, it can be removed so the
+display just runs at its native 3840x2160.)
