@@ -27,11 +27,16 @@ def create_screen():
 
 
 def fit_rect(display_size, internal_size):
-    """Largest same-aspect rect of internal_size that fits centered in display_size."""
+    """Largest same-aspect rect of internal_size that fits centered in display_size.
+
+    Upscales in whole-number steps to keep pixel art crisp, but if the display is
+    smaller than internal_size in either dimension, falls back to a fractional
+    downscale instead of forcing scale 1 (which would overflow the display)."""
     dw, dh = display_size
     iw, ih = internal_size
-    scale = max(1, int(min(dw / iw, dh / ih)))
-    tw, th = iw * scale, ih * scale
+    raw_scale = min(dw / iw, dh / ih)
+    scale = int(raw_scale) if raw_scale >= 1 else raw_scale
+    tw, th = max(1, int(iw * scale)), max(1, int(ih * scale))
     return pygame.Rect((dw - tw) // 2, (dh - th) // 2, tw, th)
 
 
