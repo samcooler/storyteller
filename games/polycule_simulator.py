@@ -989,6 +989,18 @@ class PolyculeSimulator(Game):
                                             center[1] + radius * math.sin(angle))
         node_diameter = 2 * int(19 * scale)
         ring_positions = self._relax_ring_positions(ring_positions, center, min_r, max_r, node_diameter)
+
+        # Bond-strength radii tend to pull everyone in close to the center, leaving
+        # most of the panel empty. Auto-zoom the whole layout back out from center
+        # so it always fills the available diagram radius - same-size faces, just
+        # spread further apart - instead of scaling with however tight the bonds are.
+        if ring_positions:
+            current_max = max(math.hypot(x - center[0], y - center[1]) for x, y in ring_positions.values())
+            if current_max > 1:
+                zoom = max_r / current_max
+                for name, (x, y) in ring_positions.items():
+                    ring_positions[name] = (center[0] + (x - center[0]) * zoom, center[1] + (y - center[1]) * zoom)
+
         ring_margin = int(19 * scale) + int(22 * scale)  # node radius + label line
         for name, pos in ring_positions.items():
             ring_positions[name] = self._clamp_to_rect(pos, diagram, ring_margin)
@@ -1054,7 +1066,7 @@ class PolyculeSimulator(Game):
         ui.draw_ring_segments(surface, center, stat_ring_r, active.stat_values(), STAT_COLORS,
                                thickness=max(2, int(4 * scale)))
         name_font = ui.font(20, scale)
-        label = name_font.render(f"{active.name} (active)", True, ui.TEXT_COLOR)
+        label = name_font.render(active.name, True, ui.TEXT_COLOR)
         surface.blit(label, label.get_rect(midtop=(center[0], center[1] + stat_ring_r + int(6 * scale))))
 
         node_r2 = int(19 * scale)
