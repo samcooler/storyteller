@@ -408,6 +408,8 @@ class PolyculeSimulator(Game):
         self.node_pos = {}
         self.overlay = None
         self.roster_scroll = 0
+        self.roster_index = 0
+        self.dossier_name = None
 
         self.state = "hand"
         self.hand = []
@@ -753,9 +755,17 @@ class PolyculeSimulator(Game):
             return
         if self.overlay == "roster":
             if event.key in (pygame.K_DOWN, pygame.K_s):
-                self.roster_scroll += 1
+                self.roster_index = min(len(self.members) - 1, self.roster_index + 1)
             elif event.key in (pygame.K_UP, pygame.K_w):
-                self.roster_scroll = max(0, self.roster_scroll - 1)
+                self.roster_index = max(0, self.roster_index - 1)
+            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
+                if self.members:
+                    self.dossier_name = self.members[self.roster_index].name
+                    self.overlay = "dossier"
+            return
+        if self.overlay == "dossier":
+            if event.key in (pygame.K_BACKSPACE, pygame.K_RETURN, pygame.K_SPACE):
+                self.overlay = "roster"
             return
         if self.overlay:
             return
@@ -1018,9 +1028,19 @@ class PolyculeSimulator(Game):
         content_h = line_h * 2 + int(4 * scale) + (rel_bar_h + 2) * 2 + int(6 * scale) + grid_h
         row_h = max(portrait_r * 2 + int(6 * scale), content_h) + int(10 * scale)
         max_visible = max(1, available_h // row_h)
+        self.roster_index = max(0, min(self.roster_index, len(self.members) - 1))
+        if self.roster_index < self.roster_scroll:
+            self.roster_scroll = self.roster_index
+        elif self.roster_index >= self.roster_scroll + max_visible:
+            self.roster_scroll = self.roster_index - max_visible + 1
         self.roster_scroll = max(0, min(self.roster_scroll, max(0, len(self.members) - max_visible)))
         visible = self.members[self.roster_scroll:self.roster_scroll + max_visible]
-        for member in visible:
+        for row_i, member in enumerate(visible):
+            if self.roster_scroll + row_i == self.roster_index:
+                sel_rect = pygame.Rect(rect.left + int(8 * scale), y - int(4 * scale),
+                                        rect.width - int(16 * scale), row_h - int(2 * scale))
+                pygame.draw.rect(surface, (110, 70, 130), sel_rect)
+                pygame.draw.rect(surface, ui.ACCENT, sel_rect, width=max(1, int(2 * scale)))
             others = [m for m in self.members if m.name != member.name]
             if others:
                 avg_trust = sum(self.get_rel(member.name, o.name)["trust"] for o in others) / len(others)
@@ -1040,6 +1060,101 @@ class PolyculeSimulator(Game):
             grid_y = bars_y + (rel_bar_h + 2) * 2 + int(6 * scale)
             self._draw_stat_grid(surface, tx, grid_y, bar_w, scale, member, small_font)
             y += row_h
+
+    def _join_flavor(self, char, keys):
+        phrases = [stat_flavor(k, char.stat_value(k)) for k in keys]
+        if len(phrases) == 1:
+            return phrases[0]
+        return ", ".join(phrases[:-1]) + f", and {phrases[-1]}"
+
+    def _blit_left_wrapped(self, surface, font_obj, text, color, left_x, top_y, max_width, line_spacing=1.15):
+        y = top_y
+        for line in ui.wrap_text(font_obj, text, max_width):
+            surface.blit(font_obj.render(line, True, color), (left_x, y))
+            y += int(font_obj.get_height() * line_spacing)
+        return y
+
+    def _draw_dossier(self, surface, rect, scale):
+        """Full-screen single-character view: flavor text and portrait lead,
+        exact numbers are secondary support underneath - the opposite
+        emphasis from the roster row and selector tile."""
+        ui.draw_panel(surface, rect, scale)
+        member = next((m for m in self.members if m.name == self.dossier_name), None)
+        title_font = ui.font(32, scale, title=True)
+        body_font = ui.font(22, scale)
+        small_font = ui.font(16, scale)
+        label_font = ui.font(14, scale)
+        pad = int(20 * scale)
+        if member is None:
+            surface.blit(body_font.render("They've moved on.", True, ui.DIM_TEXT), (rect.left + pad, rect.top + pad))
+            return
+
+        surface.blit(title_font.render(member.name, True, ui.ACCENT), (rect.left + pad, rect.top + pad))
+        sub_y = rect.top + pad + int(40 * scale)
+        surface.blit(body_font.render(member.archetype, True, ui.TEXT_COLOR), (rect.left + pad, sub_y))
+
+        content_top = sub_y + int(38 * scale)
+        content_bottom = rect.bottom - int(50 * scale)
+        left_w = int(rect.width * 0.34)
+        left_rect = pygame.Rect(rect.left + pad, content_top, left_w - pad, content_bottom - content_top)
+        right_rect = pygame.Rect(rect.left + pad + left_w, content_top,
+                                  rect.width - left_w - pad * 2, content_bottom - content_top)
+
+        portrait_r = min(left_rect.width, left_rect.height) // 4
+        center = (left_rect.left + left_rect.width // 2, left_rect.top + portrait_r + int(10 * scale))
+        pixel_portrait.draw_bust(surface, pygame.Rect(center[0] - portrait_r, center[1] - portrait_r,
+                                                        portrait_r * 2, portrait_r * 2), member.seed)
+        ring_r = portrait_r + int(16 * scale)
+        ui.draw_ring_segments(surface, center, ring_r, member.stat_values(), STAT_COLORS,
+                               thickness=max(3, int(5 * scale)))
+
+        y = center[1] + ring_r + int(16 * scale)
+        kink_names = ", ".join(k for k, _level in member.kinks)
+        y = self._blit_left_wrapped(surface, small_font, f"Into: {kink_names}", ui.DIM_TEXT,
+                                     left_rect.left, y, left_rect.width)
+        y += int(4 * scale)
+        surface.blit(small_font.render(f"Prefers: {member.preferred_activity}", True, ui.DIM_TEXT),
+                     (left_rect.left, y))
+        y += small_font.get_height() + int(14 * scale)
+
+        bar_h = max(3, int(5 * scale))
+        for key in STAT_ORDER:
+            info = STAT_INFO[key]
+            val = member.stat_value(key)
+            if y + label_font.get_height() + bar_h > left_rect.bottom:
+                break
+            surface.blit(label_font.render(f"{info['label']} {val}", True, ui.TEXT_COLOR), (left_rect.left, y))
+            y += label_font.get_height() + int(2 * scale)
+            ui.draw_bar(surface, pygame.Rect(left_rect.left, y, left_rect.width, bar_h), val, 100, info["color"], border_w=0)
+            y += bar_h + int(4 * scale)
+
+        ry = right_rect.top
+        trait_line = f"{member.name} {self._join_flavor(member, TRAITS)}."
+        status_line = f"Right now they're {self._join_flavor(member, STATUSES)}."
+        ry = self._blit_left_wrapped(surface, body_font, trait_line, ui.TEXT_COLOR, right_rect.left, ry, right_rect.width)
+        ry += int(8 * scale)
+        ry = self._blit_left_wrapped(surface, body_font, status_line, ui.TEXT_COLOR, right_rect.left, ry, right_rect.width)
+        ry += int(18 * scale)
+
+        others = [m for m in self.members if m.name != member.name]
+        if others:
+            surface.blit(small_font.render("Household bonds:", True, ui.ACCENT), (right_rect.left, ry))
+            ry += small_font.get_height() + int(4 * scale)
+            for other in others:
+                rel = self.get_rel(member.name, other.name)
+                line = f"{other.name}: Trust {rel['trust']}  Spark {rel['spark']}"
+                surface.blit(small_font.render(line, True, ui.TEXT_COLOR), (right_rect.left, ry))
+                ry += small_font.get_height() + int(3 * scale)
+            ry += int(10 * scale)
+
+        my_prospects = [(n, p) for n, p in self.prospects.items() if p["met_by"] == member.name]
+        if my_prospects:
+            surface.blit(small_font.render("Prospects:", True, ui.ACCENT), (right_rect.left, ry))
+            ry += small_font.get_height() + int(4 * scale)
+            for name, prospect in my_prospects:
+                line = f"{name}: Interest {prospect['interest']}"
+                surface.blit(small_font.render(line, True, ui.TEXT_COLOR), (right_rect.left, ry))
+                ry += small_font.get_height() + int(3 * scale)
 
     def _draw_calendar(self, surface, rect, scale):
         ui.draw_panel(surface, rect, scale)
@@ -1089,8 +1204,11 @@ class PolyculeSimulator(Game):
             rect = pygame.Rect(int(40 * scale), int(40 * scale), w - int(80 * scale), h - int(80 * scale))
             if self.overlay == "roster":
                 self._draw_roster(surface, rect, scale)
-                hint_text = "Up/Down to scroll, Tab to close" if len(self.members) > 1 else "Tab to close"
+                hint_text = "Up/Down to select, Enter for dossier, Tab to close" if len(self.members) > 1 else "Enter for dossier, Tab to close"
                 hint = small_font.render(hint_text, True, ui.DIM_TEXT)
+            elif self.overlay == "dossier":
+                self._draw_dossier(surface, rect, scale)
+                hint = small_font.render("Backspace to roster, Tab to close", True, ui.DIM_TEXT)
             else:
                 self._draw_calendar(surface, rect, scale)
                 hint = small_font.render("C to close", True, ui.DIM_TEXT)
