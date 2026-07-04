@@ -965,7 +965,7 @@ class PolyculeSimulator(Game):
             surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + node_r3 + int(3 * scale))))
 
     def _draw_roster(self, surface, rect, scale):
-        ui.draw_panel(surface, rect, scale)
+        ui.draw_panel(surface, rect, scale, corner_style="diamond")
         title_font = ui.font(30, scale, title=True)
         body_font = ui.font(20, scale)
         small_font = ui.font(15, scale)
@@ -1008,7 +1008,7 @@ class PolyculeSimulator(Game):
             y += row_h
 
     def _draw_calendar(self, surface, rect, scale):
-        ui.draw_panel(surface, rect, scale)
+        ui.draw_panel(surface, rect, scale, corner_style="diamond")
         title_font = ui.font(30, scale, title=True)
         body_font = ui.font(22, scale)
         small_font = ui.font(18, scale)
@@ -1064,7 +1064,7 @@ class PolyculeSimulator(Game):
             return
 
         panel, diagram, center, min_r, max_r, _ = self._network_geometry()
-        ui.draw_panel(surface, panel, scale)
+        ui.draw_panel(surface, panel, scale, corner_style="diamond")
         y = panel.top + int(12 * scale)
         surface.blit(small_font.render(
             f"Q{self.quarter} W{self.week_in_quarter}/{WEEKS_PER_QUARTER} - {self.active.name}'s turn",
@@ -1081,7 +1081,7 @@ class PolyculeSimulator(Game):
 
         main_rect = pygame.Rect(panel.right + int(16 * scale), int(16 * scale),
                                  w - panel.width - int(48 * scale), h - int(32 * scale))
-        ui.draw_panel(surface, main_rect, scale)
+        ui.draw_panel(surface, main_rect, scale, corner_style="diamond")
 
         title = title_font.render(self.name, True, ui.ACCENT)
         surface.blit(title, (main_rect.left + int(20 * scale), main_rect.top + int(16 * scale)))
