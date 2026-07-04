@@ -1425,9 +1425,9 @@ class PolyculeSimulator(Game):
         card_h = content_rect.height
         total_w = len(cards) * card_w + (len(cards) - 1) * gap
         start_x = content_rect.left + max(0, content_rect.width - total_w) // 2
-        name_font = ui.font(15, scale)
-        kind_font = ui.font(11, scale)
-        blurb_font = ui.font(11, scale)
+        name_font = ui.font(11, scale)
+        kind_font = ui.font(9, scale)
+        blurb_font = ui.font(9, scale)
         badge_font = ui.font(10, scale)
         for i, card in enumerate(cards):
             rect = pygame.Rect(start_x + i * (card_w + gap), content_rect.top, card_w, card_h)
@@ -1567,10 +1567,10 @@ class PolyculeSimulator(Game):
         border = ui.ACCENT if selected else ui.BORDER_OUTER
         ui.draw_panel(card_surf, rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=border)
         display_name, _blurb = self._card_face(card)
-        name_font = ui.font(min(15, max(10, card_w // 11)), scale)
+        name_font = ui.font(min(13, max(9, card_w // 13)), scale)
         ui.blit_wrapped(card_surf, name_font, display_name, ui.TEXT_COLOR,
                          rect.centerx, rect.top + int(10 * scale), card_w - int(12 * scale))
-        kind_font = ui.font(14, scale)
+        kind_font = ui.font(12, scale)
         kind_label = kind_font.render(self._card_label(card), True, ui.DIM_TEXT)
         card_surf.blit(kind_label, kind_label.get_rect(midbottom=(rect.centerx, rect.bottom - int(8 * scale))))
         return card_surf
