@@ -1,0 +1,136 @@
+[
+  {
+    "id": "new_job",
+    "name": "New Job",
+    "class": "events",
+    "blurb": "You land a new job. Direct deposit, who is she.",
+    "stats": {"happiness": [8, 25], "desire": [2, 15], "stress": [-10, 2]}
+  },
+  {
+    "id": "inheritance",
+    "name": "Unexpected Inheritance",
+    "class": "events",
+    "blurb": "A distant relative leaves you an inheritance you did not see coming.",
+    "stats": {"happiness": [10, 25], "desire": [0, 10]}
+  },
+  {
+    "id": "meet_cutie",
+    "name": "Randomly Meet Cutie",
+    "class": "events",
+    "spawns_prospect": true,
+    "blurb": "You randomly meet someone cute out in the world.",
+    "stats": {"desire": [10, 28], "happiness": [4, 16]}
+  },
+  {
+    "id": "viral_moment",
+    "name": "Viral Moment",
+    "class": "events",
+    "blurb": "Something you posted blows up, in a good way.",
+    "stats": {"happiness": [6, 20], "desire": [2, 12]}
+  },
+  {
+    "id": "old_flame",
+    "name": "Old Flame Resurfaces",
+    "class": "events",
+    "blurb": "An old flame texts you out of nowhere.",
+    "stats": {"desire": [5, 25], "stress": [2, 14]}
+  },
+  {
+    "id": "windfall",
+    "name": "Surprise Windfall",
+    "class": "events",
+    "blurb": "A surprise windfall lands in your account.",
+    "stats": {"happiness": [6, 18], "stress": [-10, 0]}
+  },
+  {
+    "id": "apartment_opens_up",
+    "name": "Great Apartment Opens Up",
+    "class": "events",
+    "blurb": "A great apartment opens up right when you need it.",
+    "stats": {"happiness": [4, 16], "stress": [-8, 2]}
+  },
+  {
+    "id": "car_trouble",
+    "name": "Car Trouble",
+    "class": "events",
+    "blurb": "Your car breaks down at the worst possible time.",
+    "stats": {"stress": [8, 22], "happiness": [-12, 0]}
+  },
+  {
+    "id": "fired",
+    "name": "Fired From Job",
+    "class": "events",
+    "blurb": "You get fired. It was not a good week for it.",
+    "stats": {"stress": [10, 28], "happiness": [-20, -2], "desire": [-10, 2]}
+  },
+  {
+    "id": "mom_dies",
+    "name": "Mom Dies",
+    "class": "events",
+    "blurb": "Your mom dies. There isn't really a lesson in this one.",
+    "stats": {"stress": [15, 35], "happiness": [-30, -8]}
+  },
+  {
+    "id": "family_finds_out",
+    "name": "Family Finds Out (Badly)",
+    "class": "events",
+    "blurb": "Your family finds out about the arrangement, and it does not go well.",
+    "stats": {"stress": [10, 26], "happiness": [-18, -2]}
+  },
+  {
+    "id": "compersion",
+    "name": "Compersion Hits Different",
+    "class": "events",
+    "blurb": "You catch a glimpse of {target}'s other relationship going well, and it genuinely makes you happy.",
+    "stats": {"happiness": [8, 22], "desire": [2, 14]}
+  },
+  {
+    "id": "munch_gossip",
+    "name": "Munch Gossip",
+    "class": "events",
+    "blurb": "Someone at the munch is talking about your polycule, and not quietly.",
+    "stats": {"stress": [4, 16], "happiness": [-10, 2]}
+  },
+  {
+    "id": "legal_snag",
+    "name": "Insurance/Legal Snag",
+    "class": "events",
+    "blurb": "An insurance form reminds you, again, that the law only recognizes one relationship at a time.",
+    "stats": {"stress": [6, 20], "happiness": [-14, 0]}
+  },
+  {
+    "id": "grant_money",
+    "name": "Grant Money Comes Through",
+    "class": "events",
+    "blurb": "The grant application from three months ago actually comes through.",
+    "stats": {"happiness": [10, 25], "desire": [2, 14]}
+  },
+  {
+    "id": "piece_featured",
+    "name": "Piece Gets Featured",
+    "class": "events",
+    "blurb": "Someone's photos of your piece start circulating and people are into it.",
+    "stats": {"happiness": [6, 20], "desire": [2, 12]}
+  },
+  {
+    "id": "generator_dies",
+    "name": "Generator Dies Two Days Before Load-In",
+    "class": "events",
+    "blurb": "The generator dies two days before load-in.",
+    "stats": {"stress": [10, 26], "happiness": [-14, 0]}
+  },
+  {
+    "id": "rival_steals_concept",
+    "name": "Rival Crew Steals Your Concept",
+    "class": "events",
+    "blurb": "A rival crew debuts a piece suspiciously close to your concept.",
+    "stats": {"stress": [8, 22], "happiness": [-16, -2]}
+  },
+  {
+    "id": "legend_dms",
+    "name": "A Legend In The Scene DMs You",
+    "class": "events",
+    "blurb": "A legend in the scene slides into your DMs about your work.",
+    "stats": {"desire": [10, 26], "happiness": [6, 18]}
+  }
+]

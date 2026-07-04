@@ -1,0 +1,132 @@
+[
+  {
+    "id": "date_night",
+    "name": "Date Night",
+    "class": "dates",
+    "scope": "pair",
+    "target_scope": "members_and_prospects",
+    "schedulable": true,
+    "blurb": "Plan a date with {target}.",
+    "stats": {"trust": [0, 14], "spark": [2, 16], "fulfillment": [4, 18]}
+  },
+  {
+    "id": "self_care_day",
+    "name": "Solo Self-Care Day",
+    "class": "dates",
+    "scope": "solo",
+    "blurb": "Take a day entirely for yourself.",
+    "stats": {"fulfillment": [6, 20], "stress": [-15, -2], "happiness": [4, 14]}
+  },
+  {
+    "id": "deep_talk",
+    "name": "Deep Talk",
+    "class": "dates",
+    "scope": "pair",
+    "blurb": "Stay up talking with {target} about feelings.",
+    "stats": {"trust": [2, 14], "spark": [-2, 6], "fulfillment": [4, 16]}
+  },
+  {
+    "id": "shared_hobby",
+    "name": "Shared Hobby",
+    "class": "dates",
+    "scope": "pair",
+    "blurb": "Pick up {hobby} with {target}.",
+    "stats": {"trust": [-2, 8], "spark": [2, 14], "fulfillment": [2, 14]}
+  },
+  {
+    "id": "trash_tv",
+    "name": "Watch Trash TV",
+    "class": "dates",
+    "scope": "pair",
+    "blurb": "Marathon something truly terrible with {target}.",
+    "stats": {"trust": [0, 10], "spark": [0, 10], "fulfillment": [2, 10]}
+  },
+  {
+    "id": "group_dinner",
+    "name": "Group Dinner",
+    "class": "dates",
+    "scope": "group",
+    "blurb": "Cook a big dinner for everyone.",
+    "stats": {"harmony": [0, 16], "chaos": [-5, 5], "fulfillment": [2, 12]}
+  },
+  {
+    "id": "house_meeting",
+    "name": "House Meeting",
+    "class": "dates",
+    "scope": "group",
+    "blurb": "Call a meeting to hash things out.",
+    "stats": {"harmony": [-8, 18], "chaos": [-15, 8], "fulfillment": [0, 8]}
+  },
+  {
+    "id": "game_night",
+    "name": "Game Night",
+    "class": "dates",
+    "scope": "group",
+    "blurb": "Invite the whole crew over for game night.",
+    "stats": {"harmony": [2, 16], "chaos": [-2, 10], "fulfillment": [2, 14]}
+  },
+  {
+    "id": "group_trip",
+    "name": "Group Trip",
+    "class": "dates",
+    "scope": "group",
+    "blurb": "Propose a trip for the whole cule.",
+    "stats": {"harmony": [-6, 20], "chaos": [0, 12], "fulfillment": [6, 20]}
+  },
+  {
+    "id": "community_potluck",
+    "name": "Community Potluck",
+    "class": "dates",
+    "scope": "community",
+    "blurb": "Bring a dish to the wider community potluck.",
+    "stats": {"harmony": [2, 14], "fulfillment": [4, 16]}
+  },
+  {
+    "id": "metamour_coffee",
+    "name": "Metamour Coffee",
+    "class": "dates",
+    "scope": "pair",
+    "blurb": "Get coffee one-on-one with {target}, your metamour.",
+    "stats": {"trust": [0, 14], "fulfillment": [2, 12]}
+  },
+  {
+    "id": "meet_the_metamours",
+    "name": "Meet The Metamours",
+    "class": "dates",
+    "scope": "group",
+    "blurb": "Invite {target} to meet the rest of the polycule.",
+    "stats": {"harmony": [-10, 20], "fulfillment": [2, 14]}
+  },
+  {
+    "id": "build_session",
+    "name": "Late-Night Build Session",
+    "class": "dates",
+    "scope": "pair",
+    "blurb": "Pull an all-nighter on the build with {target}.",
+    "stats": {"trust": [2, 14], "spark": [2, 14], "fulfillment": [4, 16]}
+  },
+  {
+    "id": "scout_site",
+    "name": "Scout A Build Site",
+    "class": "dates",
+    "scope": "group",
+    "blurb": "Scout a build site out in the woods with the crew.",
+    "stats": {"harmony": [0, 14], "fulfillment": [4, 16]}
+  },
+  {
+    "id": "crew_potluck",
+    "name": "Crew Potluck At The Shop",
+    "class": "dates",
+    "scope": "group",
+    "blurb": "Bring something to the potluck at the shop.",
+    "stats": {"harmony": [2, 14], "fulfillment": [4, 16]}
+  },
+  {
+    "id": "test_fire_rig",
+    "name": "Test-Fire The Rig",
+    "class": "dates",
+    "scope": "pair",
+    "blurb": "Test-fire the rig with {target}, safety glasses on.",
+    "stats": {"trust": [0, 10], "spark": [2, 16], "fulfillment": [4, 18]}
+  }
+]

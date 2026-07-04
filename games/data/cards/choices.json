@@ -1,0 +1,156 @@
+[
+  {
+    "id": "ask_them_in",
+    "name": "Ask Them In",
+    "class": "choice",
+    "kind": "commit",
+    "target_scope": "prospects",
+    "blurb": "Invite {target} to join the cule for real.",
+    "stats": {"trust": [10, 30], "spark": [5, 20], "desire": [5, 20]}
+  },
+  {
+    "id": "have_the_talk",
+    "name": "Have The Talk",
+    "class": "choice",
+    "kind": "breakup",
+    "target_scope": "members",
+    "blurb": "Sit {target} down and have The Talk about where this is really going.",
+    "stats": {"trust": [-25, 15], "spark": [-20, 10], "desire": [-10, 10]}
+  },
+  {
+    "id": "cut_it_off",
+    "name": "Cut It Off",
+    "class": "choice",
+    "kind": "breakup",
+    "target_scope": "members_and_prospects",
+    "guaranteed_exit": true,
+    "blurb": "Tell {target} plainly that this isn't going anywhere.",
+    "stats": {"trust": [-40, 5], "spark": [-30, 0], "desire": [-20, 5]}
+  },
+  {
+    "id": "move_in_together",
+    "name": "Move In Together",
+    "class": "choice",
+    "kind": "commit",
+    "target_scope": "members",
+    "blurb": "Take the cohabitating leap with {target}.",
+    "stats": {"trust": [-10, 22], "spark": [-10, 10], "desire": [5, 20]}
+  },
+  {
+    "id": "renegotiate_rules",
+    "name": "Renegotiate The Rules",
+    "class": "choice",
+    "kind": "ask_to_change",
+    "target_scope": "members",
+    "blurb": "Propose new terms for how this relationship works with {target}.",
+    "stats": {"trust": [-10, 20], "desire": [0, 15]}
+  },
+  {
+    "id": "ask_for_more_time",
+    "name": "Ask For More Time",
+    "class": "choice",
+    "kind": "ask_to_change",
+    "target_scope": "members",
+    "blurb": "Ask {target} to slow things down for a while.",
+    "stats": {"trust": [0, 14], "spark": [-8, 4], "desire": [-5, 10]}
+  },
+  {
+    "id": "propose_opening_up",
+    "name": "Propose Opening Things Up",
+    "class": "choice",
+    "kind": "ask_to_change",
+    "target_scope": "members",
+    "blurb": "Propose opening things up with {target}.",
+    "stats": {"trust": [-20, 18], "spark": [-10, 14], "desire": [5, 22]}
+  },
+  {
+    "id": "ask_hierarchy_change",
+    "name": "Ask For Hierarchy Change",
+    "class": "choice",
+    "kind": "ask_to_change",
+    "target_scope": "members",
+    "blurb": "Ask {target} to rethink where you rank.",
+    "stats": {"trust": [-22, 16], "desire": [0, 18]}
+  },
+  {
+    "id": "vulnerable_share",
+    "name": "Vulnerable Share",
+    "class": "choice",
+    "kind": "share",
+    "target_scope": "prospects",
+    "blurb": "Open up to {target} about something real.",
+    "stats": {"interest": [-8, 28], "desire": [2, 14]}
+  },
+  {
+    "id": "confess_secret",
+    "name": "Confess A Secret",
+    "class": "choice",
+    "kind": "share",
+    "target_scope": "prospects",
+    "blurb": "Confess something you have been sitting on to {target}.",
+    "stats": {"interest": [-25, 22], "desire": [0, 16]}
+  },
+  {
+    "id": "voice_memo",
+    "name": "Send A Voice Memo",
+    "class": "choice",
+    "kind": "message",
+    "target_scope": "prospects",
+    "blurb": "Send {target} an unnecessarily long voice memo.",
+    "stats": {"interest": [-10, 25], "desire": [0, 10]}
+  },
+  {
+    "id": "go_quiet",
+    "name": "Go Quiet",
+    "class": "choice",
+    "kind": "message",
+    "target_scope": "prospects",
+    "blurb": "Don't text {target} back for a few days.",
+    "stats": {"interest": [-25, 5], "desire": [-15, 0]}
+  },
+  {
+    "id": "ask_onto_crew",
+    "name": "Ask Them Onto The Build Crew",
+    "class": "choice",
+    "kind": "commit",
+    "target_scope": "members_and_prospects",
+    "blurb": "Ask {target} onto the build crew for real.",
+    "stats": {"trust": [10, 28], "spark": [5, 18], "desire": [5, 20]}
+  },
+  {
+    "id": "cut_from_project",
+    "name": "Cut Them From The Project",
+    "class": "choice",
+    "kind": "breakup",
+    "target_scope": "members",
+    "blurb": "Tell {target} the collaboration is over.",
+    "stats": {"trust": [-35, 10], "spark": [-25, 5], "desire": [-15, 5]}
+  },
+  {
+    "id": "pitch_co_lead",
+    "name": "Pitch Co-Leading The Build",
+    "class": "choice",
+    "kind": "ask_to_change",
+    "target_scope": "members",
+    "blurb": "Pitch co-leading the build with {target}.",
+    "stats": {"trust": [-15, 20], "desire": [0, 18]}
+  },
+  {
+    "id": "call_out_idea_theft",
+    "name": "Call Out The Uncredited Idea Theft",
+    "class": "choice",
+    "kind": "share",
+    "target_scope": "members",
+    "blurb": "Call {target} out for taking credit for your idea.",
+    "stats": {"trust": [-20, 15], "desire": [-10, 15]}
+  },
+  {
+    "id": "admit_intimidated",
+    "name": "Admit You're Intimidated By Their Talent",
+    "class": "choice",
+    "kind": "share",
+    "target_scope": "members",
+    "blurb": "Admit to {target} that their talent low-key intimidates you.",
+    "stats": {"trust": [-10, 20], "desire": [0, 14]}
+  }
+]
