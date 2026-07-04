@@ -138,7 +138,7 @@ HAND_CAP = 7
 DISCARD_TO = 4
 WEEKS_PER_QUARTER = 12
 ENERGY_COST = 15
-START_MEMBERS = 3
+START_MEMBERS = 2
 START_OTHERS = 4
 EXIT_BREAKUP_TIER = 2
 
@@ -224,8 +224,8 @@ class PolyculeSimulator(Game):
         self.week = 1
         self.anim_t = 0.0
 
-        names = self.rng.sample(FIRST_NAMES, START_MEMBERS + START_OTHERS + 2)
-        self.members = [Character(self.rng, name=n) for n in names[:START_MEMBERS + START_OTHERS]]
+        names = self.rng.sample(FIRST_NAMES, START_MEMBERS + START_OTHERS)
+        self.members = [Character(self.rng, name=n) for n in names[:START_MEMBERS]]
         self.relationships = {}
         for i in range(len(self.members)):
             for j in range(i + 1, len(self.members)):
@@ -235,7 +235,7 @@ class PolyculeSimulator(Game):
                 }
 
         self.prospects = {}
-        for n in names[START_MEMBERS + START_OTHERS:]:
+        for n in names[START_MEMBERS:]:
             c = Character(self.rng, name=n)
             met_by = self.rng.choice(self.members).name
             self.prospects[c.name] = {"char": c, "interest": self.rng.randint(20, 60), "met_by": met_by}
