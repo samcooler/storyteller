@@ -1330,7 +1330,11 @@ class PolyculeSimulator(Game):
                              ui.TEXT_COLOR, content_rect.left + content_rect.width // 2, content_rect.top,
                              content_rect.width)
 
-        self._draw_hand_row(surface, main_rect, scale, body_font, small_font)
+        if self.state != "draw":
+            # The "draw" announcement above already reveals the newly drawn cards as
+            # its own tiles; self.hand already includes them (added in _start_turn),
+            # so showing the fanned hand here too would just duplicate the reveal.
+            self._draw_hand_row(surface, main_rect, scale, body_font, small_font)
 
     def _draw_character_card(self, surface, rect, name, scale, selected):
         border = ui.ACCENT if selected else ui.BORDER_OUTER
