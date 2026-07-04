@@ -836,7 +836,7 @@ class PolyculeSimulator(Game):
         # A few iterations of simple pairwise repulsion so nodes never overlap,
         # regardless of how the angle/radius weighting happened to cluster them.
         names = list(positions.keys())
-        min_sep = node_diameter * 1.8  # room for the name label under each portrait
+        min_sep = node_diameter * 2.4  # room for the name label under each portrait
         for _ in range(10):
             for i in range(len(names)):
                 for j in range(i + 1, len(names)):
@@ -909,7 +909,7 @@ class PolyculeSimulator(Game):
             idx = siblings.index(pname)
             angle = (idx / max(1, len(siblings))) * 2 * math.pi + 0.6
             strength = prospect["interest"] / 100.0
-            sat_max, sat_min = 52 * scale, 36 * scale
+            sat_max, sat_min = 74 * scale, 54 * scale
             radius = sat_max - strength * (sat_max - sat_min)
             target = (anchor[0] + radius * math.cos(angle), anchor[1] + radius * math.sin(angle))
             target = self._clamp_to_rect(target, diagram, prospect_margin)
@@ -1428,9 +1428,9 @@ class PolyculeSimulator(Game):
             pad = int(8 * scale)
             y = rect.top + pad
             display_name, display_blurb = self._card_face(card)
-            name_label = name_font.render(display_name, True, ui.TEXT_COLOR)
-            surface.blit(name_label, name_label.get_rect(midtop=(rect.centerx, y)))
-            y += name_label.get_height() + int(2 * scale)
+            name_lines = ui.wrap_text(name_font, display_name, rect.width - pad * 2)
+            ui.blit_wrapped(surface, name_font, display_name, ui.TEXT_COLOR, rect.centerx, y, rect.width - pad * 2)
+            y += len(name_lines) * int(name_font.get_height() * 1.15) + int(2 * scale)
             kind_label = kind_font.render(label, True, tint)
             surface.blit(kind_label, kind_label.get_rect(midtop=(rect.centerx, y)))
             y += kind_label.get_height() + int(6 * scale)

@@ -99,14 +99,16 @@ REFERENCE_DIM = 540  # short edge of the internal render surface; raise this to 
 _font_cache = {}
 
 FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
-BODY_FONT_PATH = FONT_DIR / "VT323-Regular.ttf"
-TITLE_FONT_PATH = FONT_DIR / "PressStart2P-Regular.ttf"
-TITLE_SIZE_RATIO = 0.4  # Press Start 2P is much wider per glyph than VT323
+BODY_FONT_PATH = FONT_DIR / "MPLUS1p-Medium.ttf"
+TITLE_FONT_PATH = FONT_DIR / "MPLUS1p-ExtraBold.ttf"
+TITLE_SIZE_RATIO = 1.0  # both fonts are normal proportional weights of the same family now
+BODY_SIZE_RATIO = 0.8  # MPLUS1p is noticeably wider per glyph than the old VT323; sizes were tuned for that
 
 
-class PixelFont:
-    """Wraps a pygame Font so every render() is hard-edged (no anti-aliasing),
-    regardless of what the antialias argument the caller passes."""
+class GameFont:
+    """Wraps a pygame Font so every render() is anti-aliased, regardless of what
+    the antialias argument the caller passes - smooth text instead of the harsh
+    forced-jagged look of a bitmap/pixel font blown up to UI size."""
 
     __slots__ = ("_font",)
 
@@ -114,7 +116,7 @@ class PixelFont:
         self._font = font_obj
 
     def render(self, text, _antialias, color):
-        return self._font.render(text, False, color)
+        return self._font.render(text, True, color)
 
     def size(self, text):
         return self._font.size(text)
@@ -129,7 +131,7 @@ def scale_factor(surface):
 
 def font(size, scale, title=False):
     path = TITLE_FONT_PATH if title else BODY_FONT_PATH
-    point_size = size * TITLE_SIZE_RATIO if title else size
+    point_size = size * (TITLE_SIZE_RATIO if title else BODY_SIZE_RATIO)
     key = (str(path), max(6, int(point_size * scale)))
     cached = _font_cache.get(key)
     if cached is None:
@@ -137,7 +139,7 @@ def font(size, scale, title=False):
             raw = pygame.font.Font(str(path), key[1])
         except (FileNotFoundError, OSError):
             raw = pygame.font.SysFont(None, key[1])
-        cached = PixelFont(raw)
+        cached = GameFont(raw)
         _font_cache[key] = cached
     return cached
 
