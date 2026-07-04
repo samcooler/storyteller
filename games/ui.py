@@ -16,7 +16,7 @@ TEXT_COLOR = (255, 245, 250)
 DIM_TEXT = (200, 180, 205)
 ACCENT = (255, 200, 235)
 
-REFERENCE_DIM = 600  # short edge of the internal render surface; raise this to shrink text relative to it
+REFERENCE_DIM = 540  # short edge of the internal render surface; raise this to shrink text relative to it
 _font_cache = {}
 
 FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
