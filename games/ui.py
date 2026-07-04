@@ -4,6 +4,7 @@ Everything here takes a `scale` factor (see `scale_factor`) so the same
 drawing code looks right on a small Pi touchscreen and a 4K monitor.
 """
 
+import math
 from pathlib import Path
 
 import pygame
@@ -63,8 +64,90 @@ def font(size, scale, title=False):
     return cached
 
 
+def _shade(color, amount):
+    """Lighten (amount > 0) or darken (amount < 0) an RGB color, clamped to [0, 255]."""
+    return tuple(max(0, min(255, c + amount)) for c in color)
+
+
+def _draw_corner_bracket(surface, corner, sx, sy, size, width, color):
+    """Filled L-shaped corner plate with a diagonal chamfer cut where the two arms
+    meet - reads as a distinct metal bracket clipped over the corner rather than a
+    plain miter. Used on cards: sharp and game-y."""
+    cx, cy = corner
+    t = max(2, size * 0.4)
+    pts = [
+        (cx, cy),
+        (cx + sx * size, cy),
+        (cx + sx * size, cy + sy * t),
+        (cx + sx * t, cy + sy * t),
+        (cx + sx * t, cy + sy * size),
+        (cx, cy + sy * size),
+    ]
+    pygame.draw.polygon(surface, _shade(color, 20), pts)
+    pygame.draw.polygon(surface, _shade(color, -60), pts, width)
+
+
+def _draw_corner_diamond(surface, corner, sx, sy, size, width, color):
+    """A small gem/diamond set into the corner, like a jeweled window-frame accent.
+    Used on display windows (roster, calendar, network panel)."""
+    cx, cy = corner
+    d = size * 0.55
+    r = size * 0.42
+    center = (cx + sx * d, cy + sy * d)
+    pts = [
+        (center[0], center[1] - r),
+        (center[0] + r, center[1]),
+        (center[0], center[1] + r),
+        (center[0] - r, center[1]),
+    ]
+    pygame.draw.polygon(surface, _shade(color, 25), pts)
+    pygame.draw.polygon(surface, color, pts, max(1, width - 1))
+    pygame.draw.line(surface, color, corner, (center[0], center[1] - r) if sy == 1 else (center[0], center[1] + r), max(1, width - 1))
+    pygame.draw.line(surface, color, corner, (center[0] - r, center[1]) if sx == 1 else (center[0] + r, center[1]), max(1, width - 1))
+
+
+_CURL_ANGLES = {
+    (1, 1): (math.pi, 1.5 * math.pi),
+    (-1, 1): (1.5 * math.pi, 2 * math.pi),
+    (1, -1): (0.5 * math.pi, math.pi),
+    (-1, -1): (0, 0.5 * math.pi),
+}
+
+
+def _draw_corner_curl(surface, corner, sx, sy, size, width, color):
+    """Ornate filigree hook: a rounded arc through the corner plus a small curled tail
+    past each end, like a wrought-iron frame flourish. Used for the whole-screen frame."""
+    cx, cy = corner
+    r = size
+    center = (cx + sx * r, cy + sy * r)
+    arc_rect = pygame.Rect(int(center[0] - r), int(center[1] - r), int(r * 2), int(r * 2))
+    start, end = _CURL_ANGLES[(sx, sy)]
+    pygame.draw.arc(surface, color, arc_rect, start, end, width)
+    tail = size * 0.5
+    pygame.draw.line(surface, color, (cx + sx * size, cy), (cx + sx * (size + tail * 0.4), cy - sy * tail * 0.5), max(1, width - 1))
+    pygame.draw.line(surface, color, (cx, cy + sy * size), (cx - sx * tail * 0.5, cy + sy * (size + tail * 0.4)), max(1, width - 1))
+
+
+CORNER_STYLES = {
+    "bracket": _draw_corner_bracket,
+    "diamond": _draw_corner_diamond,
+    "curl": _draw_corner_curl,
+}
+
+
+def draw_corners(surface, rect, scale=1.0, color=BORDER_INNER, style="bracket", size=14, width=2):
+    """Draw the four corner ornaments for `style` around `rect`."""
+    draw_fn = CORNER_STYLES.get(style, _draw_corner_bracket)
+    corner_size = max(4, round(size * scale))
+    corner_w = max(1, round(width * scale))
+    draw_fn(surface, (rect.left, rect.top), 1, 1, corner_size, corner_w, color)
+    draw_fn(surface, (rect.right, rect.top), -1, 1, corner_size, corner_w, color)
+    draw_fn(surface, (rect.left, rect.bottom), 1, -1, corner_size, corner_w, color)
+    draw_fn(surface, (rect.right, rect.bottom), -1, -1, corner_size, corner_w, color)
+
+
 def draw_panel(surface, rect, scale=1.0, top_color=PASTEL_TOP, bottom_color=PASTEL_BOTTOM,
-               border_color=BORDER_OUTER, inner_border_color=BORDER_INNER):
+               border_color=BORDER_OUTER, inner_border_color=BORDER_INNER, corner_style="bracket"):
     height = rect.height
     for y in range(height):
         t = y / max(height - 1, 1)
@@ -73,11 +156,22 @@ def draw_panel(surface, rect, scale=1.0, top_color=PASTEL_TOP, bottom_color=PAST
     border_w = max(1, round(3 * scale))
     inner_w = max(1, round(1 * scale))
     inset = max(2, round(6 * scale))
-    tick = max(3, round(6 * scale))
     pygame.draw.rect(surface, border_color, rect, width=border_w)
+
+    # Inset bevel: light edge top/left, dark edge bottom/right, faking a top-left light source.
+    bevel = border_w + max(1, round(2 * scale))
+    light, dark = _shade(border_color, 45), _shade(border_color, -70)
+    tl = (rect.left + bevel, rect.top + bevel)
+    tr = (rect.right - bevel, rect.top + bevel)
+    bl = (rect.left + bevel, rect.bottom - bevel)
+    br = (rect.right - bevel, rect.bottom - bevel)
+    pygame.draw.line(surface, light, tl, tr, inner_w)
+    pygame.draw.line(surface, light, tl, bl, inner_w)
+    pygame.draw.line(surface, dark, bl, br, inner_w)
+    pygame.draw.line(surface, dark, tr, br, inner_w)
+
     pygame.draw.rect(surface, inner_border_color, rect.inflate(-inset, -inset), width=inner_w)
-    pygame.draw.line(surface, inner_border_color, (rect.left + tick, rect.top + 4), (rect.left + 4, rect.top + tick))
-    pygame.draw.line(surface, inner_border_color, (rect.right - tick, rect.top + 4), (rect.right - 4, rect.top + tick))
+    draw_corners(surface, rect, scale, color=inner_border_color, style=corner_style)
 
 
 def draw_dashed_line(surface, color, start, end, width=1, dash=10, gap=6):
@@ -129,3 +223,49 @@ def draw_bar(surface, rect, value, max_value, fill_color, bg_color=(40, 30, 45),
     fill_rect = pygame.Rect(rect.left, rect.top, int(rect.width * frac), rect.height)
     pygame.draw.rect(surface, fill_color, fill_rect)
     pygame.draw.rect(surface, border_color, rect, width=border_w)
+
+
+_vignette_cache = {}
+
+
+def build_vignette(size, max_alpha=70):
+    """A soft edge-darkening overlay, cached by size since it's expensive to rebuild
+    per-pixel. Built from four small 1D gradient strips scaled up rather than a full
+    per-pixel loop, which would be too slow in pure Python at 1080p+."""
+    cached = _vignette_cache.get(size)
+    if cached is not None:
+        return cached
+    w, h = size
+    band = max(8, min(w, h) // 6)
+    overlay = pygame.Surface(size, pygame.SRCALPHA)
+
+    strip_w = pygame.Surface((band, 1), pygame.SRCALPHA)
+    for x in range(band):
+        t = 1 - x / max(band - 1, 1)
+        strip_w.set_at((x, 0), (0, 0, 0, int(max_alpha * t * t)))
+    left = pygame.transform.scale(strip_w, (band, h))
+    overlay.blit(left, (0, 0))
+    overlay.blit(pygame.transform.flip(left, True, False), (w - band, 0))
+
+    strip_h = pygame.Surface((1, band), pygame.SRCALPHA)
+    for y in range(band):
+        t = 1 - y / max(band - 1, 1)
+        strip_h.set_at((0, y), (0, 0, 0, int(max_alpha * t * t)))
+    top = pygame.transform.scale(strip_h, (w, band))
+    overlay.blit(top, (0, 0), special_flags=pygame.BLEND_RGBA_MAX)
+    overlay.blit(pygame.transform.flip(top, False, True), (0, h - band), special_flags=pygame.BLEND_RGBA_MAX)
+
+    _vignette_cache[size] = overlay
+    return overlay
+
+
+def draw_screen_frame(surface, rect, scale=1.0, color=BORDER_OUTER, vignette_alpha=70):
+    """Full-screen ornate chrome: a soft vignette plus a curl-cornered frame line just
+    inside the display edge. Call once per frame, after everything else has been drawn
+    and scaled onto the real display surface."""
+    surface.blit(build_vignette(rect.size, vignette_alpha), rect.topleft)
+    inset = max(3, round(10 * scale))
+    frame_rect = rect.inflate(-inset * 2, -inset * 2)
+    border_w = max(1, round(2 * scale))
+    pygame.draw.rect(surface, color, frame_rect, width=border_w)
+    draw_corners(surface, frame_rect, scale, color=color, style="curl", size=30, width=3)

@@ -132,6 +132,8 @@ def main():
 
         screen.fill((0, 0, 0))
         pygame.transform.scale(render_surface, dest_rect.size, screen.subsurface(dest_rect))
+        frame_scale = min(dest_rect.size) / ui.REFERENCE_DIM
+        ui.draw_screen_frame(screen, dest_rect, frame_scale)
         pygame.display.flip()
 
     pygame.quit()
