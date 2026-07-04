@@ -73,6 +73,25 @@ START_MEMBERS = 3
 START_OTHERS = 4
 EXIT_BREAKUP_TIER = 2
 
+# Static fill-ins used to preview a card's blurb before it has a real target
+# (drawn-card and discard previews render every frame, so this must stay
+# rng-free rather than reusing self.rng like `_flavor` does).
+PREVIEW_PLACEHOLDERS = {"target": "someone", "hobby": "a hobby", "project": "a project", "venue": "a spot"}
+
+# Quick visual kind-coding shared by the drawn-card and discard previews.
+KIND_COLORS = {
+    "bond": (140, 180, 240),
+    "date": (255, 180, 120),
+    "court": (255, 150, 190),
+    "flag": (230, 120, 120),
+    "commit": (200, 160, 255),
+    "exit": (255, 90, 90),
+    "meet": (150, 220, 255),
+    "group": (180, 230, 120),
+    "chaos": (255, 210, 110),
+    "end": (180, 180, 180),
+}
+
 # Every action card resolves against this ladder: one outcome tier is rolled
 # per play, and the same tier drives every stat delta the card defines, so a
 # single roll reads as one coherent outcome instead of independent stats.
@@ -470,6 +489,11 @@ class PolyculeSimulator(Game):
             "venue": self.rng.choice(VENUES),
         }
         return card["blurb"].format(**kwargs)
+
+    def _preview_blurb(self, card):
+        """Rng-free blurb rendering for cards that don't have a real target yet,
+        safe to call every frame (draw/discard previews)."""
+        return card["blurb"].format(**PREVIEW_PLACEHOLDERS)
 
     def _spend_energy(self):
         active = self.active
@@ -1122,22 +1146,39 @@ class PolyculeSimulator(Game):
             surface.blit(hint, (content_rect.left, content_rect.top + len(self.result_text) * int(32 * scale) + int(20 * scale)))
         elif self.state == "draw":
             if self.drawn_cards:
-                names = ", ".join(c["name"] for c in self.drawn_cards)
-                msg = f"{self.active.name} draws: {names}."
+                msg = f"{self.active.name} draws {len(self.drawn_cards)} card(s):"
             elif len(self.active.hand) >= HAND_CAP:
                 msg = f"{self.active.name}'s hand is full ({HAND_CAP} cards) - nothing new to draw."
             else:
                 msg = f"{self.active.name} has no new cards to draw right now."
             ui.blit_wrapped(surface, body_font, msg, ui.TEXT_COLOR,
                              content_rect.left + content_rect.width // 2, content_rect.top, content_rect.width)
+            if self.drawn_cards:
+                tiles_top = content_rect.top + int(36 * scale)
+                tiles_rect = pygame.Rect(content_rect.left, tiles_top,
+                                          content_rect.width, max(0, content_rect.bottom - tiles_top - int(22 * scale)))
+                self._draw_card_tiles(surface, tiles_rect, self.drawn_cards, scale, badge="NEW")
             hint = small_font.render("Enter to continue", True, ui.DIM_TEXT)
-            surface.blit(hint, (content_rect.left, content_rect.top + int(60 * scale)))
+            surface.blit(hint, (content_rect.left, content_rect.bottom - int(16 * scale)))
         elif self.state == "discard":
-            msg = f"Hand over the limit - discard down to {DISCARD_TO}. ({len(self.hand)}/{DISCARD_TO})"
+            over_by = len(self.hand) - DISCARD_TO
+            msg = f"Hand over the limit - discard {over_by} more down to {DISCARD_TO}."
             ui.blit_wrapped(surface, body_font, msg, ui.TEXT_COLOR,
                              content_rect.left + content_rect.width // 2, content_rect.top, content_rect.width)
+            bar_top = content_rect.top + int(28 * scale)
+            bar_rect = pygame.Rect(content_rect.left, bar_top, content_rect.width, max(4, int(10 * scale)))
+            bar_color = (230, 90, 90) if over_by > 0 else (150, 220, 150)
+            ui.draw_bar(surface, bar_rect, len(self.hand), HAND_CAP, bar_color)
+            tick_x = bar_rect.left + int(bar_rect.width * (DISCARD_TO / HAND_CAP))
+            pygame.draw.line(surface, ui.ACCENT, (tick_x, bar_rect.top - int(3 * scale)),
+                              (tick_x, bar_rect.bottom + int(3 * scale)), max(1, int(2 * scale)))
+            if self.hand:
+                card_top = bar_rect.bottom + int(14 * scale)
+                card_rect = pygame.Rect(content_rect.left, card_top,
+                                         content_rect.width, max(0, content_rect.bottom - card_top - int(22 * scale)))
+                self._draw_card_tiles(surface, card_rect, [self.hand[self.hand_index]], scale, badge="DISCARD?")
             hint = small_font.render("Enter to discard the selected card", True, ui.DIM_TEXT)
-            surface.blit(hint, (content_rect.left, content_rect.top + int(40 * scale)))
+            surface.blit(hint, (content_rect.left, content_rect.bottom - int(16 * scale)))
         else:
             ui.blit_wrapped(surface, body_font, "Pick a card to play, or End Week when you're done.",
                              ui.TEXT_COLOR, content_rect.left + content_rect.width // 2, content_rect.top,
@@ -1211,6 +1252,47 @@ class PolyculeSimulator(Game):
         if start_idx + len(visible) < len(names):
             label = arrow_font.render(">", True, ui.ACCENT)
             surface.blit(label, label.get_rect(midleft=(start_x + total_w + int(6 * scale), content_rect.top + card_h // 2)))
+
+    def _draw_card_tiles(self, surface, content_rect, cards, scale, badge=None):
+        """Full-size previews (name, kind tint, wrapped blurb) for cards without a
+        real target yet - used by the draw and discard stages."""
+        gap = int(12 * scale)
+        card_w = min(int(150 * scale), max(int(90 * scale), (content_rect.width - gap * (len(cards) - 1)) // max(1, len(cards))))
+        card_h = content_rect.height
+        total_w = len(cards) * card_w + (len(cards) - 1) * gap
+        start_x = content_rect.left + max(0, content_rect.width - total_w) // 2
+        name_font = ui.font(15, scale)
+        kind_font = ui.font(11, scale)
+        blurb_font = ui.font(11, scale)
+        badge_font = ui.font(10, scale)
+        for i, card in enumerate(cards):
+            rect = pygame.Rect(start_x + i * (card_w + gap), content_rect.top, card_w, card_h)
+            tint = KIND_COLORS.get(card["kind"], ui.ACCENT)
+            top_color = tuple(min(255, c // 3 + 40) for c in tint)
+            bottom_color = tuple(min(255, c // 5 + 20) for c in tint)
+            ui.draw_panel(surface, rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=tint)
+            pad = int(8 * scale)
+            y = rect.top + pad
+            name_label = name_font.render(card["name"], True, ui.TEXT_COLOR)
+            surface.blit(name_label, name_label.get_rect(midtop=(rect.centerx, y)))
+            y += name_label.get_height() + int(2 * scale)
+            kind_label = kind_font.render(card["kind"], True, tint)
+            surface.blit(kind_label, kind_label.get_rect(midtop=(rect.centerx, y)))
+            y += kind_label.get_height() + int(6 * scale)
+            for line in ui.wrap_text(blurb_font, self._preview_blurb(card), rect.width - pad * 2):
+                if y + blurb_font.get_height() > rect.bottom - pad:
+                    break
+                label = blurb_font.render(line, True, ui.DIM_TEXT)
+                surface.blit(label, label.get_rect(midtop=(rect.centerx, y)))
+                y += blurb_font.get_height() + int(1 * scale)
+            if badge:
+                badge_label = badge_font.render(badge, True, ui.BG)
+                badge_rect = badge_label.get_rect()
+                badge_rect.topright = (rect.right - int(2 * scale), rect.top + int(2 * scale))
+                pad_badge = int(3 * scale)
+                bg_rect = badge_rect.inflate(pad_badge * 2, pad_badge * 2)
+                pygame.draw.rect(surface, tint, bg_rect)
+                surface.blit(badge_label, badge_rect)
 
     def _draw_option_list(self, surface, content_rect, body_font, labels, selected_index):
         scale = ui.scale_factor(self.screen)
