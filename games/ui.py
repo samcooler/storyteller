@@ -99,10 +99,10 @@ REFERENCE_DIM = 540  # short edge of the internal render surface; raise this to 
 _font_cache = {}
 
 FONT_DIR = Path(__file__).resolve().parent.parent / "assets" / "fonts"
-BODY_FONT_PATH = FONT_DIR / "MPLUS1p-Medium.ttf"
-TITLE_FONT_PATH = FONT_DIR / "MPLUS1p-ExtraBold.ttf"
-TITLE_SIZE_RATIO = 1.0  # both fonts are normal proportional weights of the same family now
-BODY_SIZE_RATIO = 0.8  # MPLUS1p is noticeably wider per glyph than the old VT323; sizes were tuned for that
+BODY_FONT_PATH = FONT_DIR / "Spectral-Medium.ttf"
+TITLE_FONT_PATH = FONT_DIR / "MedievalSharp.ttf"
+TITLE_SIZE_RATIO = 1.0
+BODY_SIZE_RATIO = 1.0
 
 
 class GameFont:

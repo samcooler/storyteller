@@ -7,7 +7,7 @@ from games import GAMES
 from games import ui
 
 FPS = 60
-INTERNAL_SIZE = (1920, 1080)  # real, low render resolution - upscaled with square pixels
+INTERNAL_SIZE = (1920, 1080)  # native 1080p render target, smooth-scaled to fit whatever display we're on
 
 
 def create_screen():
@@ -25,14 +25,14 @@ def create_screen():
 def fit_rect(display_size, internal_size):
     """Largest same-aspect rect of internal_size that fits centered in display_size.
 
-    Upscales in whole-number steps to keep pixel art crisp, but if the display is
-    smaller than internal_size in either dimension, falls back to a fractional
-    downscale instead of forcing scale 1 (which would overflow the display)."""
+    We render smooth 2D graphics now, not pixel art, so this fills the display
+    edge-to-edge with a continuous scale factor (no whole-number snapping) -
+    the final blit uses smoothscale, so fractional scale looks clean rather
+    than introducing pixel-art artifacts."""
     dw, dh = display_size
     iw, ih = internal_size
     raw_scale = min(dw / iw, dh / ih)
-    scale = int(raw_scale) if raw_scale >= 1 else raw_scale
-    tw, th = max(1, int(iw * scale)), max(1, int(ih * scale))
+    tw, th = max(1, int(iw * raw_scale)), max(1, int(ih * raw_scale))
     return pygame.Rect((dw - tw) // 2, (dh - th) // 2, tw, th)
 
 
@@ -182,7 +182,7 @@ def main():
             options_menu.draw(render_surface)
 
         screen.fill((0, 0, 0))
-        pygame.transform.scale(render_surface, dest_rect.size, screen.subsurface(dest_rect))
+        pygame.transform.smoothscale(render_surface, dest_rect.size, screen.subsurface(dest_rect))
         frame_scale = min(dest_rect.size) / ui.REFERENCE_DIM
         ui.draw_screen_frame(screen, dest_rect, frame_scale)
         pygame.display.flip()
