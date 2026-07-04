@@ -12,9 +12,10 @@ python3 -m venv .venv
 ```
 
 By default it fills whatever display it's run on (auto-detected, true
-fullscreen). Pass `--windowed` for a smaller 1280x960 dev window instead.
-Everything renders internally at a fixed 640x480 and is upscaled with square
-pixels — keeps it fast on the Pi regardless of the actual display resolution.
+fullscreen). Pass `--windowed` for a 1920x1080 dev window instead.
+Everything renders internally at a fixed 1920x1080 (16:9, matching the Pi's
+monitor) and is upscaled with square pixels (integer scale only, so it stays
+crisp) — keeps it fast on the Pi regardless of the actual display resolution.
 
 Note: on macOS, pygame currently only has prebuilt wheels up through
 Python 3.12 — if your default `python3` is newer, use `python3.12` to make
@@ -24,7 +25,6 @@ the venv.
 
 - Menu: Arrow keys to pick a game, Enter/Space to play, Esc to quit.
 - In a game: Esc returns to the menu.
-- Bonk the Billionaire: press 1-9 to bonk a hole, matching the number under it.
 - Polycule Simulator: Left/Right to pick a card, Enter to play it (then
   Up/Down + Enter to choose a target if needed, Backspace to cancel), Tab for
   the roster window, C for the calendar.
@@ -72,3 +72,20 @@ cd ~/storyteller && python3 main.py
 
 To launch automatically on boot, we can add a systemd service or an autostart
 entry later once there's more than one game worth showing off.
+
+### Matching the Pi's HDMI output to the 4K monitor
+
+`fit_rect` in `main.py` only ever scales the internal render surface by a
+whole number (so pixel art stays crisp), so the game fills the display
+exactly only when the display resolution is a clean multiple of the internal
+size. The internal size is 1920x1080 (16:9) specifically because the Dell
+U3219Q's native 4K output, 3840x2160, is exactly 2x that — so running at the
+monitor's native resolution already gives a perfect edge-to-edge fit with no
+letterboxing and no kanshi/`config.txt` workaround needed.
+
+(Earlier the internal size was a 4:3 resolution, which either got pillarboxed
+or stretched on this 16:9 panel and needed a `kanshi` profile forcing a
+non-native mode to fit cleanly. That's no longer necessary — if a `kanshi`
+profile forcing a custom mode is still present in
+`~/.config/kanshi/config` on the Pi from that era, it can be removed so the
+display just runs at its native 3840x2160.)
