@@ -1,0 +1,63 @@
+Card art generation prompt - Choice/Modifier sheet
+===================================================
+Paste this whole file into ChatGPT (image generation) as one message.
+Produces one 2560x1920 image: a 5x5 grid of 512x384 (4:3) illustrations,
+covering all 17 "Choice/Modifier" cards plus 8 filler cells. Slice with
+a script adapted from scripts/slice_portraits.py (COLS=5, ROWS=5),
+reading the grid left-to-right, top-to-bottom, same convention as
+assets/images_older.png.
+
+---
+
+Create a single 2560x1920 pixel image: a flat 5x5 grid of 25
+illustrations, each cell exactly 512x384 pixels (4:3). Draw a thin 2px
+light-grey separator line between every cell so they can be cut apart
+cleanly afterward. Do not put any text, letters, numbers, or logos
+anywhere in the image. Every cell is a single self-contained
+scene/object illustration, centered, filling its cell edge-to-edge - no
+character portraits or close-up faces (those exist separately), focus
+on objects, scenes, and symbolic moments instead. Consistent art style
+across all 25 cells: warm, slightly desaturated illustrated painterly
+style, moody indoor/nighttime lighting, muted plum/pink/teal palette, a
+little melancholy-comic tone - think indie narrative game key art, not
+photorealistic, not cartoon/anime.
+
+Grid cells, left to right, top to bottom:
+
+1. A key placed into an open palm, doorway light behind
+2. Two people sitting across a table, coffee gone cold, heavy silence
+3. A phone screen with a contact card and a hovering "block" button
+4. Moving boxes stacked in a shared doorway, two sets of keys on a hook
+5. A relationship agreement document with red-pen edits and sticky notes
+6. A calendar with days crossed out and one circled far in the future
+7. A single closed door cracking open onto a hallway of light
+8. A flowchart being redrawn with an eraser and pencil
+9. A folded note pushed across a table, a hand trembling slightly
+10. A torn diary page held nervously in candlelight
+11. A phone recording a voice memo, waveform mid-scroll, absurdly long timer
+12. A phone face-down on a nightstand, screen glow fading to black
+13. A clipboard with a crew roster, a new name being added in marker
+14. A name being crossed off a workshop whiteboard crew list
+15. Two hands both reaching for the same blueprint
+16. An open sketchbook with an original design beside a printed flyer of a near-copy
+17. A small figure looking up at a towering, glowing finished sculpture
+18-25. Filler cells: a small pink diamond corner-bracket motif centered on a muted plum background, no other detail
+
+Card order reference (cells 1-17):
+1. Ask Them In
+2. Have The Talk
+3. Cut It Off
+4. Move In Together
+5. Renegotiate The Rules
+6. Ask For More Time
+7. Propose Opening Things Up
+8. Ask For Hierarchy Change
+9. Vulnerable Share
+10. Confess A Secret
+11. Send A Voice Memo
+12. Go Quiet
+13. Ask Them Onto The Build Crew
+14. Cut Them From The Project
+15. Pitch Co-Leading The Build
+16. Call Out The Uncredited Idea Theft
+17. Admit You're Intimidated By Their Talent

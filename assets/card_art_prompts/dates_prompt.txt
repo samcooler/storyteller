@@ -1,0 +1,60 @@
+Card art generation prompt - Dates sheet
+=========================================
+Paste this whole file into ChatGPT (image generation) as one message.
+Produces one 2560x1920 image: a 5x5 grid of 512x384 (4:3) illustrations,
+covering all 16 "Dates" cards plus 9 filler cells. Slice with a script
+adapted from scripts/slice_portraits.py (COLS=5, ROWS=5), reading the
+grid left-to-right, top-to-bottom, same convention as assets/images_older.png.
+
+---
+
+Create a single 2560x1920 pixel image: a flat 5x5 grid of 25
+illustrations, each cell exactly 512x384 pixels (4:3). Draw a thin 2px
+light-grey separator line between every cell so they can be cut apart
+cleanly afterward. Do not put any text, letters, numbers, or logos
+anywhere in the image. Every cell is a single self-contained
+scene/object illustration, centered, filling its cell edge-to-edge - no
+character portraits or close-up faces (those exist separately), focus
+on objects, scenes, and symbolic moments instead. Consistent art style
+across all 25 cells: warm, slightly desaturated illustrated painterly
+style, moody indoor/nighttime lighting, muted plum/pink/teal palette, a
+little melancholy-comic tone - think indie narrative game key art, not
+photorealistic, not cartoon/anime.
+
+Grid cells, left to right, top to bottom:
+
+1. Candlelit dinner for two in a cozy restaurant booth, wine glasses
+2. A sunlit reading nook - tea, a face mask, a blanket, solo comfort
+3. Two people up late on a couch under string lights, tissue box nearby
+4. Hands working a pottery wheel, clay mid-spin
+5. A couch, a glowing TV remote in hand, popcorn bowl, garish reality-TV glow
+6. A crowded dinner table from above, many hands reaching for dishes
+7. A whiteboard covered in a chore-wheel diagram, folding chairs in a circle
+8. A table strewn with board games, dice, and minis
+9. A packed minivan on a highway, a rooftop cargo box
+10. A long table of mismatched potluck dishes, hand-lettered place cards
+11. Two coffee cups on a cafe table, one gone cold, soft afternoon light
+12. A doorway welcome scene, several people waving hello
+13. A workshop at night, welding sparks, string lights, a half-built sculpture
+14. Two flashlight beams and a clipboard in a foggy forest clearing
+15. A folding table in a garage covered in tupperware and tools
+16. A fire-art sculpture mid-test-burn at dusk, safety goggles on a workbench
+17-25. Filler cells: a small pink diamond corner-bracket motif centered on a muted plum background, no other detail
+
+Card order reference (cells 1-16):
+1. Date Night
+2. Solo Self-Care Day
+3. Deep Talk
+4. Shared Hobby
+5. Watch Trash TV
+6. Group Dinner
+7. House Meeting
+8. Game Night
+9. Group Trip
+10. Community Potluck
+11. Metamour Coffee
+12. Meet The Metamours
+13. Late-Night Build Session
+14. Scout A Build Site
+15. Crew Potluck At The Shop
+16. Test-Fire The Rig
