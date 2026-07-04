@@ -14,7 +14,7 @@ import random
 
 import pygame
 
-from . import pixel_portrait, ui
+from . import card_loader, pixel_portrait, ui
 from .base import Game
 
 FIRST_NAMES = [
@@ -158,194 +158,10 @@ OUTCOME_TIERS = [
     "About as good as it gets.",
 ]
 
-GENERIC_CARDS = [
-    {"id": "date_night", "name": "Date Night", "kind": "date",
-     "blurb": "Plan a date with {target}."},
-    {"id": "deep_talk", "name": "Deep Talk", "kind": "bond",
-     "blurb": "Stay up talking with {target} about feelings.", "trust": (2, 12), "spark": (-2, 4)},
-    {"id": "chore_split", "name": "Split Chores", "kind": "bond",
-     "blurb": "Divide the week's chores with {target}.", "trust": (-10, 8), "spark": (-6, 2)},
-    {"id": "shared_hobby", "name": "Shared Hobby", "kind": "bond",
-     "blurb": "Pick up {hobby} with {target}.", "trust": (-2, 8), "spark": (0, 10)},
-    {"id": "art_project", "name": "Joint Art Project", "kind": "bond",
-     "blurb": "Start {project} with {target}.", "trust": (-4, 10), "spark": (2, 12)},
-    {"id": "boundary", "name": "Set a Boundary", "kind": "bond",
-     "blurb": "Name something you need with {target}.", "trust": (4, 14), "spark": (-6, 2)},
-    {"id": "jealousy_checkin", "name": "Jealousy Check-in", "kind": "bond",
-     "blurb": "Talk through a jealous feeling with {target}.", "trust": (0, 12), "spark": (-4, 6)},
-    {"id": "cohabit", "name": "Move In Together", "kind": "bond",
-     "blurb": "Take the cohabitating leap with {target}.", "trust": (-10, 18), "spark": (-10, 6)},
-    {"id": "trash_tv", "name": "Watch Trash TV", "kind": "bond",
-     "blurb": "Marathon something truly terrible with {target}.", "trust": (0, 10), "spark": (-2, 8)},
-    {"id": "chore_wheel_intervention", "name": "Chore Wheel Intervention", "kind": "bond",
-     "blurb": "Stage a formal intervention about the chore wheel with {target}.", "trust": (-8, 14), "spark": (-6, 2)},
-    {"id": "metamour_appreciation", "name": "Metamour Appreciation", "kind": "bond",
-     "blurb": "Tell {target} they're an incredible metamour, unprompted.", "trust": (4, 16), "spark": (-2, 6)},
-    {"id": "group_chat_add", "name": "Add to the Group Chat", "kind": "bond",
-     "blurb": "Add {target} to the group chat named something unhinged.", "trust": (2, 10), "spark": (0, 6)},
+GENERIC_CARDS = card_loader.load_generic_cards()
+ARCHETYPE_CARDS = card_loader.load_archetype_cards()
 
-    {"id": "flirt", "name": "Flirt", "kind": "court",
-     "blurb": "Turn up the charm on {target}.", "interest": (5, 25)},
-    {"id": "vulnerable_share", "name": "Vulnerable Share", "kind": "court",
-     "blurb": "Open up to {target} about something real.", "interest": (-5, 30)},
-    {"id": "go_quiet", "name": "Go Quiet", "kind": "court",
-     "blurb": "Don't text {target} back for a few days.", "interest": (-25, 5)},
-    {"id": "ask_out", "name": "Ask Them Out", "kind": "court",
-     "blurb": "Suggest an actual date with {target}.", "interest": (0, 30)},
-    {"id": "voice_memo", "name": "Send a Voice Memo", "kind": "court",
-     "blurb": "Send {target} an unnecessarily long voice memo.", "interest": (-10, 25)},
-    {"id": "overanalyze_texts", "name": "Overanalyze Their Texts", "kind": "court",
-     "blurb": "Spend an hour overanalyzing {target}'s last text.", "interest": (-15, 15)},
-    {"id": "meet_the_metamours", "name": "Meet the Metamours", "kind": "court",
-     "blurb": "Invite {target} to meet the rest of the polycule.", "interest": (-10, 30)},
-
-    {"id": "overshare_early", "name": "Overshare Early", "kind": "flag",
-     "blurb": "Trauma dump on {target} way earlier than you probably should.", "interest": (-25, 20)},
-    {"id": "ask_about_the_ex", "name": "Ask About The Ex", "kind": "flag",
-     "blurb": "Ask {target} point-blank about their living situation with their ex.", "interest": (-20, 18)},
-    {"id": "pitch_your_crypto", "name": "Pitch Your Crypto", "kind": "flag",
-     "blurb": "Pitch {target} on your new relationship coin.", "interest": (-28, 10)},
-    {"id": "declare_different", "name": "Declare You're Different", "kind": "flag",
-     "blurb": "Tell {target} you're not like other people.", "interest": (-22, 16)},
-    {"id": "bring_up_money", "name": "Bring Up Money", "kind": "flag",
-     "blurb": "Casually bring up how you actually make ends meet.", "interest": (-20, 18)},
-    {"id": "read_consent_form_aloud", "name": "Read The Consent Form Aloud", "kind": "flag",
-     "blurb": "Actually read the whole consent form out loud before signing anything with {target}.", "interest": (8, 24)},
-    {"id": "bring_their_order", "name": "Bring Their Coffee Order", "kind": "flag",
-     "blurb": "Show up with {target}'s coffee order, unasked.", "interest": (6, 22)},
-    {"id": "mention_your_therapist", "name": "Bring Up Your Therapist", "kind": "flag",
-     "blurb": "Mention your therapist to {target}, completely normally.", "interest": (8, 24)},
-    {"id": "check_in_on_them", "name": "Check In After Their Hard Day", "kind": "flag",
-     "blurb": "Text {target} just to check in after a rough day.", "interest": (6, 20)},
-    {"id": "insist_on_splitting", "name": "Insist On Splitting The Bill", "kind": "flag",
-     "blurb": "Split the bill before {target} can reach for their wallet.", "interest": (5, 18)},
-
-    {"id": "go_out", "name": "Go Out", "kind": "meet",
-     "blurb": "Head out to {venue} and see who's around."},
-    {"id": "dating_app", "name": "Match Online", "kind": "meet",
-     "blurb": "Swipe through dating apps hoping for a connection."},
-
-    {"id": "house_meeting", "name": "House Meeting", "kind": "group",
-     "blurb": "Call a meeting to hash things out.", "harmony": (-10, 20), "chaos": (-15, 10)},
-    {"id": "group_dinner", "name": "Group Dinner", "kind": "group",
-     "blurb": "Cook a big dinner for everyone.", "harmony": (0, 15), "chaos": (-5, 5)},
-    {"id": "calendar_sync", "name": "Calendar Sync", "kind": "group",
-     "blurb": "Try to sync everyone's calendars.", "harmony": (-5, 10), "chaos": (-20, 5)},
-    {"id": "group_trip", "name": "Plan a Group Trip", "kind": "group",
-     "blurb": "Propose a trip for the whole cule.", "harmony": (-8, 18), "chaos": (0, 10)},
-
-    {"id": "blame_mercury", "name": "Blame Mercury Retrograde", "kind": "chaos",
-     "blurb": "Announce to the house that Mercury is in retrograde and everyone should lower their expectations this week.",
-     "harmony": (-15, 8), "chaos": (8, 28), "stress": (2, 15)},
-    {"id": "invite_your_ex", "name": "Invite Your Ex To Brunch", "kind": "chaos",
-     "blurb": "Invite your ex to Sunday brunch. On purpose. To 'test the waters.'",
-     "harmony": (-20, 5), "chaos": (12, 28), "stress": (5, 20)},
-    {"id": "screenshot_the_chat", "name": "Screenshot The Group Chat", "kind": "chaos",
-     "blurb": "Screenshot the group chat 'just to keep receipts.'",
-     "harmony": (-22, 0), "chaos": (12, 32), "stress": (8, 22)},
-    {"id": "ignore_the_water_heater", "name": "Ignore The Water Heater", "kind": "chaos",
-     "blurb": "Notice the water heater is making a noise and decide it's Not Your Problem this week.",
-     "harmony": (-12, 10), "chaos": (5, 18), "stress": (2, 12)},
-    {"id": "surprise_metamour", "name": "Bring Someone New To Game Night", "kind": "chaos",
-     "blurb": "Bring a new partner to game night without a heads up.",
-     "harmony": (-18, 8), "chaos": (8, 25), "stress": (2, 16)},
-    {"id": "full_moon", "name": "Lean Into Full Moon Energy", "kind": "chaos",
-     "blurb": "Announce it's a full moon and use that as license to be unhinged all week.",
-     "harmony": (-10, 15), "chaos": (10, 25)},
-
-    {"id": "have_the_talk", "name": "Have The Talk", "kind": "exit", "target_scope": "members",
-     "blurb": "Sit {target} down and have The Talk about where this is really going.",
-     "trust": (-30, 25), "spark": (-20, 18)},
-    {"id": "cut_it_off", "name": "Cut It Off", "kind": "exit", "target_scope": "members_and_prospects",
-     "guaranteed_exit": True,
-     "blurb": "Tell {target} plainly that this isn't going anywhere.",
-     "trust": (-40, 10), "spark": (-30, 5)},
-]
-
-ARCHETYPE_CARDS = {
-    "astrology-pilled barista": [
-        {"id": "chart_reading", "name": "Read Their Chart", "kind": "bond",
-         "blurb": "Insist on doing {target}'s birth chart.", "trust": (-4, 10), "spark": (2, 10)},
-        {"id": "mercury_blame", "name": "Blame Mercury", "kind": "bond",
-         "blurb": "Explain to {target} that the fight was actually Mercury's fault.", "trust": (-2, 12), "spark": (-4, 6)},
-    ],
-    "crypto bro who found ethical non-monogamy on a podcast": [
-        {"id": "pitch_coin", "name": "Pitch a Coin", "kind": "bond",
-         "blurb": "Explain your new relationship token to {target}.", "trust": (-14, 4), "spark": (-2, 8)},
-        {"id": "podcast_quote", "name": "Quote the Podcast", "kind": "bond",
-         "blurb": "Quote the ethical non-monogamy podcast at {target}, again.", "trust": (-10, 6), "spark": (-2, 6)},
-    ],
-    "theater kid who never left the theater": [
-        {"id": "monologue", "name": "Perform a Monologue", "kind": "bond",
-         "blurb": "Perform a dramatic monologue at {target}.", "trust": (-4, 8), "spark": (0, 14)},
-        {"id": "blocking_notes", "name": "Give Blocking Notes", "kind": "bond",
-         "blurb": "Give {target} unsolicited blocking notes during a normal conversation.", "trust": (-8, 6), "spark": (-2, 10)},
-    ],
-    "crunchy homesteader with three chickens named after exes": [
-        {"id": "name_chicken", "name": "Name a Chicken", "kind": "bond",
-         "blurb": "Name a new chicken after {target}.", "trust": (2, 12), "spark": (-2, 6)},
-        {"id": "raw_honey_gift", "name": "Gift Raw Honey", "kind": "bond",
-         "blurb": "Gift {target} a jar of suspiciously unlabeled raw honey.", "trust": (0, 14), "spark": (-2, 4)},
-    ],
-    "spreadsheet person who tracks feelings in a pivot table": [
-        {"id": "pivot_table", "name": "Share the Pivot Table", "kind": "bond",
-         "blurb": "Show {target} the feelings spreadsheet.", "trust": (-6, 14), "spark": (-4, 4)},
-        {"id": "conditional_formatting", "name": "Add Conditional Formatting", "kind": "bond",
-         "blurb": "Color-code {target}'s row in the feelings spreadsheet red.", "trust": (-10, 6), "spark": (-4, 4)},
-    ],
-    "yoga instructor who over-shares in savasana": [
-        {"id": "savasana", "name": "Guided Savasana", "kind": "bond",
-         "blurb": "Lead {target} through an over-sharing savasana.", "trust": (0, 12), "spark": (-2, 8)},
-        {"id": "chakra_read", "name": "Read Their Chakras", "kind": "bond",
-         "blurb": "Tell {target} their heart chakra seems blocked.", "trust": (-6, 10), "spark": (-2, 6)},
-    ],
-    "DM who's still mad you missed session 4": [
-        {"id": "campaign_arc", "name": "Write Them Into the Campaign", "kind": "bond",
-         "blurb": "Write {target} into the D&D campaign.", "trust": (-2, 10), "spark": (0, 10)},
-        {"id": "session_4_callback", "name": "Bring Up Session 4 Again", "kind": "bond",
-         "blurb": "Bring up how {target} missed session 4. Still not over it.", "trust": (-10, 4), "spark": (-4, 4)},
-    ],
-    "vegan chef with strong opinions about cheese": [
-        {"id": "cashew_cheese", "name": "Serve Cashew Cheese", "kind": "bond",
-         "blurb": "Make {target} try the cashew cheese.", "trust": (-6, 8), "spark": (0, 10)},
-        {"id": "dairy_lecture", "name": "Deliver the Dairy Lecture", "kind": "bond",
-         "blurb": "Deliver the full lecture on dairy to {target}, unprompted.", "trust": (-12, 2), "spark": (-4, 4)},
-    ],
-    "rock climber who talks about 'sending' too much": [
-        {"id": "send_it", "name": "Take Them Climbing", "kind": "bond",
-         "blurb": "Take {target} climbing and narrate the whole time.", "trust": (-4, 10), "spark": (2, 12)},
-        {"id": "beta_unsolicited", "name": "Give Unsolicited Beta", "kind": "bond",
-         "blurb": "Give {target} unsolicited beta on an entirely unrelated life problem.", "trust": (-8, 6), "spark": (-2, 8)},
-    ],
-    "furry with a very normal day job": [
-        {"id": "fursona", "name": "Introduce the Fursona", "kind": "bond",
-         "blurb": "Introduce {target} to your fursona.", "trust": (-8, 12), "spark": (0, 12)},
-        {"id": "con_photos", "name": "Show Con Photos", "kind": "bond",
-         "blurb": "Show {target} photos from the last con at work, on the work laptop.", "trust": (-6, 10), "spark": (-2, 8)},
-    ],
-    "raw milk enthusiast with a lot of opinions": [
-        {"id": "raw_milk_pitch", "name": "Explain Raw Milk", "kind": "bond",
-         "blurb": "Explain to {target}, at length, why raw milk changed your life.", "trust": (-10, 6), "spark": (-2, 6)},
-        {"id": "farmer_intro", "name": "Introduce Them to Your Farmer", "kind": "bond",
-         "blurb": "Introduce {target} to 'your' farmer like it's a serious relationship.", "trust": (-4, 10), "spark": (0, 8)},
-    ],
-    "person who met their metamour on a raid night": [
-        {"id": "raid_night_invite", "name": "Invite to Raid Night", "kind": "bond",
-         "blurb": "Invite {target} to raid night to meet everyone properly.", "trust": (0, 12), "spark": (0, 10)},
-        {"id": "loot_drama", "name": "Relitigate Loot Drama", "kind": "bond",
-         "blurb": "Relitigate old guild loot drama with {target} for no reason.", "trust": (-8, 8), "spark": (-4, 6)},
-    ],
-    "tarot reader who overcharges everyone including their partners": [
-        {"id": "pull_a_card", "name": "Pull a Card on Them", "kind": "bond",
-         "blurb": "Pull a tarot card on {target} mid-argument.", "trust": (-6, 10), "spark": (-2, 8)},
-        {"id": "invoice_partner", "name": "Send an Invoice", "kind": "bond",
-         "blurb": "Actually send {target} an invoice for the reading.", "trust": (-14, 2), "spark": (-4, 4)},
-    ],
-}
-
-COMMIT_CARD = {"id": "commit", "name": "Ask Them In", "kind": "commit",
-               "blurb": "Invite {target} to join the cule for real."}
-END_WEEK = {"id": "end_week", "name": "End Week", "kind": "end", "blurb": "Wrap up and pass it on."}
+END_WEEK = {"id": "end_week", "name": "End Week", "blurb": "Wrap up and pass it on."}
 
 
 class Character:
@@ -459,21 +275,29 @@ class PolyculeSimulator(Game):
         my_prospects = self._member_prospects(member.name)
         eligible_prospects = {n: p for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD}
         for card in member.deck():
-            if card["kind"] in ("bond", "date") and not others and not my_prospects:
-                continue
-            if card["kind"] in ("court", "flag") and not my_prospects:
-                continue
-            if card["kind"] == "meet" and len(my_prospects) >= MAX_PROSPECTS_PER_MEMBER:
-                continue
-            if card["kind"] == "exit":
-                if card.get("target_scope") == "members_and_prospects":
+            cls = card["class"]
+            if cls == "dates" and card.get("scope") == "pair":
+                ts = card.get("target_scope", "members")
+                if ts == "members_and_prospects":
                     if not others and not my_prospects:
                         continue
                 elif not others:
                     continue
+            elif cls == "choice":
+                ts = card.get("target_scope", "members")
+                pool_prospects = eligible_prospects if card.get("kind") == "commit" else my_prospects
+                if ts == "members_and_prospects":
+                    if not others and not pool_prospects:
+                        continue
+                elif ts == "prospects":
+                    if not pool_prospects:
+                        continue
+                elif not others:
+                    continue
+            elif cls == "events" and card.get("spawns_prospect"):
+                if len(my_prospects) >= MAX_PROSPECTS_PER_MEMBER:
+                    continue
             pool.append(card)
-        if eligible_prospects:
-            pool.append(COMMIT_CARD)
         return pool
 
     def _start_turn(self, member):
@@ -491,18 +315,24 @@ class PolyculeSimulator(Game):
     def _card_targets(self, card):
         member = self.active
         my_prospects = self._member_prospects(member.name)
-        if card["kind"] == "bond":
-            return [m.name for m in self.members if m.name != member.name]
-        if card["kind"] == "date":
-            return [m.name for m in self.members if m.name != member.name] + list(my_prospects.keys())
-        if card["kind"] == "exit":
+        others = [m.name for m in self.members if m.name != member.name]
+        cls = card["class"]
+        if cls == "dates":
+            if card.get("scope") != "pair":
+                return []
             if card.get("target_scope") == "members_and_prospects":
-                return [m.name for m in self.members if m.name != member.name] + list(my_prospects.keys())
-            return [m.name for m in self.members if m.name != member.name]
-        if card["kind"] in ("court", "flag"):
-            return list(my_prospects.keys())
-        if card["kind"] == "commit":
-            return [n for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD]
+                return others + list(my_prospects.keys())
+            return others
+        if cls == "choice":
+            ts = card.get("target_scope", "members")
+            prospect_pool = my_prospects
+            if card.get("kind") == "commit":
+                prospect_pool = {n: p for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD}
+            if ts == "members_and_prospects":
+                return others + list(prospect_pool.keys())
+            if ts == "prospects":
+                return list(prospect_pool.keys())
+            return others
         return []
 
     def _target_info(self, name):
@@ -552,72 +382,123 @@ class PolyculeSimulator(Game):
         active = self.active
         active.statuses["energy"] = max(0, active.statuses["energy"] - ENERGY_COST)
 
+    @staticmethod
+    def _card_label(card):
+        if card is END_WEEK:
+            return "end"
+        if card["class"] == "dates":
+            return card.get("scope", "dates")
+        if card["class"] == "choice":
+            return card.get("kind", "choice")
+        return card["class"]
+
+    def _apply_stats(self, card, tier, target_name, skip_relational=False):
+        """Applies every stat in card['stats'], tier-scaled, routing each key
+        by name: trust/spark to the active-target relationship, interest to a
+        prospect, harmony/chaos to the cule, everything else (happiness,
+        fulfillment, energy, stress, desire) to the active member's own
+        statuses. Returns a list of description lines."""
+        member = self.active
+        notes = []
+        for key, (lo, hi) in card.get("stats", {}).items():
+            delta = self._tier_value(lo, hi, tier)
+            if key in ("trust", "spark"):
+                if skip_relational or target_name is None:
+                    continue
+                rel = self.get_rel(member.name, target_name)
+                rel[key] = max(0, min(100, rel[key] + delta))
+                notes.append(f"{key.capitalize()} {delta:+d}")
+            elif key == "interest":
+                if skip_relational or target_name is None:
+                    continue
+                prospect = self.prospects.get(target_name)
+                if prospect is None:
+                    continue
+                prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
+                notes.append(f"Interest {delta:+d}")
+                if prospect["interest"] <= 0:
+                    del self.prospects[target_name]
+                    notes.append(f"{target_name} stops responding entirely")
+            elif key in ("harmony", "chaos"):
+                setattr(self, key, max(0, min(100, getattr(self, key) + delta)))
+                notes.append(f"{key.capitalize()} {delta:+d}")
+            else:
+                member.statuses[key] = max(0, min(100, member.statuses[key] + delta))
+                notes.append(f"{STAT_INFO[key]['label']} {delta:+d}")
+        return [", ".join(notes) + "."] if notes else []
+
+    def _spawn_prospect(self, member):
+        venue = self.rng.choice(VENUES)
+        name = self._unique_name()
+        stranger = Character(self.rng, name=name)
+        interest = self._roll(10, 30)
+        self.prospects[stranger.name] = {"char": stranger, "interest": interest, "met_by": member.name}
+        return [f"{member.name} meets {stranger.name} at {venue}.",
+                f"({stranger.archetype}, +{interest} interest)"]
+
     def _resolve(self, card, target_name):
         member = self.active
         flavor = self._flavor(card, target_name)
-        if card["kind"] == "bond":
-            rel = self.get_rel(member.name, target_name)
+        cls = card["class"]
+        lines = [flavor]
+
+        if cls == "events":
             tier = self._roll_tier()
-            trust_d = self._tier_value(*card["trust"], tier)
-            spark_d = self._tier_value(*card["spark"], tier)
-            rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
-            rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
-            self.result_text = [flavor, OUTCOME_TIERS[tier], f"Trust {trust_d:+d}, Spark {spark_d:+d}."]
-        elif card["kind"] in ("court", "flag"):
-            prospect = self.prospects[target_name]
-            tier = self._roll_tier()
-            delta = self._tier_value(*card["interest"], tier)
-            prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
-            self.result_text = [flavor, OUTCOME_TIERS[tier], f"({delta:+d} interest)"]
-            if prospect["interest"] <= 0:
-                del self.prospects[target_name]
-                self.result_text.append(f"{target_name} stops responding entirely.")
-        elif card["kind"] == "exit":
-            tier = self._roll_tier()
-            is_prospect = target_name in self.prospects
-            guaranteed = card.get("guaranteed_exit", False)
-            if is_prospect:
-                self.prospects.pop(target_name)
-                self.result_text = [flavor, OUTCOME_TIERS[tier], f"{target_name} is out of the picture."]
-            elif guaranteed or tier <= EXIT_BREAKUP_TIER:
-                self.members = [m for m in self.members if m.name != target_name]
-                self.relationships = {k: v for k, v in self.relationships.items() if target_name not in k}
-                self.result_text = [flavor, OUTCOME_TIERS[tier], f"{target_name} moves out for good."]
-            else:
-                rel = self.get_rel(member.name, target_name)
-                trust_d = self._tier_value(*card["trust"], tier)
-                spark_d = self._tier_value(*card["spark"], tier)
-                rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
-                rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
-                self.result_text = [flavor, OUTCOME_TIERS[tier], f"Trust {trust_d:+d}, Spark {spark_d:+d}."]
-        elif card["kind"] == "meet":
-            venue = self.rng.choice(VENUES)
-            name = self._unique_name()
-            stranger = Character(self.rng, name=name)
-            interest = self._roll(10, 30)
-            self.prospects[stranger.name] = {"char": stranger, "interest": interest, "met_by": member.name}
-            self.result_text = [f"{member.name} meets {stranger.name} at {venue}.",
-                                 f"({stranger.archetype}, +{interest} interest)"]
-        elif card["kind"] == "commit":
-            prospect = self.prospects.pop(target_name)
-            new_member = prospect["char"]
-            start = min(90, prospect["interest"] + 10)
-            self.members.append(new_member)
-            self.get_rel(member.name, new_member.name).update({"trust": start, "spark": start})
-            self.result_text = [flavor, f"{new_member.name} joins the cule for real!"]
-        elif card["kind"] in ("group", "chaos"):
-            tier = self._roll_tier()
-            h_d = self._tier_value(*card["harmony"], tier)
-            c_d = self._tier_value(*card["chaos"], tier)
-            self.harmony = max(0, min(100, self.harmony + h_d))
-            self.chaos = max(0, min(100, self.chaos + c_d))
-            lines = [flavor, OUTCOME_TIERS[tier], f"Harmony {h_d:+d}, Chaos {c_d:+d}."]
-            if "stress" in card:
-                victim = self.rng.choice(self.members)
-                s_d = self._tier_value(*card["stress"], tier)
-                victim.statuses["stress"] = max(0, min(100, victim.statuses["stress"] + s_d))
-                lines.append(f"{victim.name}'s stress {s_d:+d}.")
+            lines.append(OUTCOME_TIERS[tier])
+            lines.extend(self._apply_stats(card, tier, None))
+            if card.get("spawns_prospect"):
+                lines.extend(self._spawn_prospect(member))
             self.result_text = lines
+
+        elif cls == "dates":
+            tier = self._roll_tier()
+            lines.append(OUTCOME_TIERS[tier])
+            lines.extend(self._apply_stats(card, tier, target_name))
+            self.result_text = lines
+
+        elif cls == "choice":
+            kind = card.get("kind")
+            is_prospect = target_name in self.prospects
+            tier = self._roll_tier()
+            if kind == "commit" and is_prospect:
+                prospect = self.prospects.pop(target_name)
+                trust_lo_hi = card.get("stats", {}).get("trust", (10, 10))
+                spark_lo_hi = card.get("stats", {}).get("spark", (10, 10))
+                trust_d = self._tier_value(*trust_lo_hi, tier)
+                spark_d = self._tier_value(*spark_lo_hi, tier)
+                new_member = prospect["char"]
+                self.members.append(new_member)
+                self.get_rel(member.name, new_member.name).update({
+                    "trust": max(0, min(100, prospect["interest"] + trust_d)),
+                    "spark": max(0, min(100, prospect["interest"] + spark_d)),
+                })
+                if "desire" in card.get("stats", {}):
+                    d = self._tier_value(*card["stats"]["desire"], tier)
+                    member.statuses["desire"] = max(0, min(100, member.statuses["desire"] + d))
+                lines.append(f"{new_member.name} joins the cule for real!")
+                self.result_text = lines
+            elif kind == "breakup":
+                guaranteed = card.get("guaranteed_exit", False)
+                if is_prospect:
+                    self.prospects.pop(target_name)
+                    lines += [OUTCOME_TIERS[tier], f"{target_name} is out of the picture."]
+                    lines.extend(self._apply_stats(card, tier, None, skip_relational=True))
+                elif guaranteed or tier <= EXIT_BREAKUP_TIER:
+                    self.members = [m for m in self.members if m.name != target_name]
+                    self.relationships = {k: v for k, v in self.relationships.items() if target_name not in k}
+                    lines += [OUTCOME_TIERS[tier], f"{target_name} moves out for good."]
+                    lines.extend(self._apply_stats(card, tier, None, skip_relational=True))
+                else:
+                    lines.append(OUTCOME_TIERS[tier])
+                    lines.extend(self._apply_stats(card, tier, target_name))
+                self.result_text = lines
+            else:
+                # ask_to_change, share, message, or a commit card whose
+                # target is already a member (deepening, not converting).
+                lines.append(OUTCOME_TIERS[tier])
+                lines.extend(self._apply_stats(card, tier, target_name))
+                self.result_text = lines
+
         self._spend_energy()
 
     def _negotiate_date(self, target_name, day):
@@ -792,9 +673,9 @@ class PolyculeSimulator(Game):
                 self.hand_index = (self.hand_index + 1) % len(options)
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 card = options[self.hand_index]
-                if card["kind"] == "end":
+                if card is END_WEEK:
                     self._request_end_turn()
-                elif card["kind"] in ("bond", "court", "commit", "date", "flag", "exit"):
+                elif card["class"] == "choice" or (card["class"] == "dates" and card.get("scope") == "pair"):
                     targets = self._card_targets(card)
                     if not targets:
                         self.result_text = [f"{card['name']} has no one left to target. It fizzles."]
@@ -820,7 +701,7 @@ class PolyculeSimulator(Game):
                 self.state = "hand"
             elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
                 target = self.target_options[self.target_index]
-                if self.pending_card["kind"] == "date":
+                if self.pending_card.get("schedulable"):
                     self._start_date_flow(target)
                 else:
                     self._resolve(self.pending_card, target)
@@ -1484,5 +1365,5 @@ class PolyculeSimulator(Game):
             ui.blit_wrapped(surface, name_font, card["name"], ui.TEXT_COLOR,
                              rect.centerx, rect.top + int(10 * scale), card_w - int(12 * scale))
             kind_font = ui.font(14, scale)
-            kind_label = kind_font.render(card["kind"], True, ui.DIM_TEXT)
+            kind_label = kind_font.render(self._card_label(card), True, ui.DIM_TEXT)
             surface.blit(kind_label, kind_label.get_rect(midbottom=(rect.centerx, rect.bottom - int(8 * scale))))

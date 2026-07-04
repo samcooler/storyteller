@@ -86,7 +86,7 @@
     "name": "Confess A Secret",
     "class": "choice",
     "kind": "share",
-    "target_scope": "members_and_prospects",
+    "target_scope": "prospects",
     "blurb": "Confess something you have been sitting on to {target}.",
     "stats": {"interest": [-25, 22], "desire": [0, 16]}
   },

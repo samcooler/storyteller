@@ -4,6 +4,8 @@
     "name": "Date Night",
     "class": "dates",
     "scope": "pair",
+    "target_scope": "members_and_prospects",
+    "schedulable": true,
     "blurb": "Plan a date with {target}.",
     "stats": {"trust": [0, 14], "spark": [2, 16], "fulfillment": [4, 18]}
   },

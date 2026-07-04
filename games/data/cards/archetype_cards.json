@@ -1,0 +1,80 @@
+{
+  "astrology-pilled barista": [
+    {"id": "chart_reading", "name": "Read Their Chart", "class": "dates", "scope": "pair",
+     "blurb": "Insist on doing {target}'s birth chart.", "stats": {"trust": [-4, 10], "spark": [2, 10]}},
+    {"id": "mercury_blame", "name": "Blame Mercury", "class": "dates", "scope": "pair",
+     "blurb": "Explain to {target} that the fight was actually Mercury's fault.", "stats": {"trust": [-2, 12], "spark": [-4, 6]}}
+  ],
+  "crypto bro who found ethical non-monogamy on a podcast": [
+    {"id": "pitch_coin", "name": "Pitch a Coin", "class": "dates", "scope": "pair",
+     "blurb": "Explain your new relationship token to {target}.", "stats": {"trust": [-14, 4], "spark": [-2, 8]}},
+    {"id": "podcast_quote", "name": "Quote the Podcast", "class": "dates", "scope": "pair",
+     "blurb": "Quote the ethical non-monogamy podcast at {target}, again.", "stats": {"trust": [-10, 6], "spark": [-2, 6]}}
+  ],
+  "theater kid who never left the theater": [
+    {"id": "monologue", "name": "Perform a Monologue", "class": "dates", "scope": "pair",
+     "blurb": "Perform a dramatic monologue at {target}.", "stats": {"trust": [-4, 8], "spark": [0, 14]}},
+    {"id": "blocking_notes", "name": "Give Blocking Notes", "class": "dates", "scope": "pair",
+     "blurb": "Give {target} unsolicited blocking notes during a normal conversation.", "stats": {"trust": [-8, 6], "spark": [-2, 10]}}
+  ],
+  "crunchy homesteader with three chickens named after exes": [
+    {"id": "name_chicken", "name": "Name a Chicken", "class": "dates", "scope": "pair",
+     "blurb": "Name a new chicken after {target}.", "stats": {"trust": [2, 12], "spark": [-2, 6]}},
+    {"id": "raw_honey_gift", "name": "Gift Raw Honey", "class": "dates", "scope": "pair",
+     "blurb": "Gift {target} a jar of suspiciously unlabeled raw honey.", "stats": {"trust": [0, 14], "spark": [-2, 4]}}
+  ],
+  "spreadsheet person who tracks feelings in a pivot table": [
+    {"id": "pivot_table", "name": "Share the Pivot Table", "class": "dates", "scope": "pair",
+     "blurb": "Show {target} the feelings spreadsheet.", "stats": {"trust": [-6, 14], "spark": [-4, 4]}},
+    {"id": "conditional_formatting", "name": "Add Conditional Formatting", "class": "dates", "scope": "pair",
+     "blurb": "Color-code {target}'s row in the feelings spreadsheet red.", "stats": {"trust": [-10, 6], "spark": [-4, 4]}}
+  ],
+  "yoga instructor who over-shares in savasana": [
+    {"id": "savasana", "name": "Guided Savasana", "class": "dates", "scope": "pair",
+     "blurb": "Lead {target} through an over-sharing savasana.", "stats": {"trust": [0, 12], "spark": [-2, 8]}},
+    {"id": "chakra_read", "name": "Read Their Chakras", "class": "dates", "scope": "pair",
+     "blurb": "Tell {target} their heart chakra seems blocked.", "stats": {"trust": [-6, 10], "spark": [-2, 6]}}
+  ],
+  "DM who's still mad you missed session 4": [
+    {"id": "campaign_arc", "name": "Write Them Into the Campaign", "class": "dates", "scope": "pair",
+     "blurb": "Write {target} into the D&D campaign.", "stats": {"trust": [-2, 10], "spark": [0, 10]}},
+    {"id": "session_4_callback", "name": "Bring Up Session 4 Again", "class": "dates", "scope": "pair",
+     "blurb": "Bring up how {target} missed session 4. Still not over it.", "stats": {"trust": [-10, 4], "spark": [-4, 4]}}
+  ],
+  "vegan chef with strong opinions about cheese": [
+    {"id": "cashew_cheese", "name": "Serve Cashew Cheese", "class": "dates", "scope": "pair",
+     "blurb": "Make {target} try the cashew cheese.", "stats": {"trust": [-6, 8], "spark": [0, 10]}},
+    {"id": "dairy_lecture", "name": "Deliver the Dairy Lecture", "class": "dates", "scope": "pair",
+     "blurb": "Deliver the full lecture on dairy to {target}, unprompted.", "stats": {"trust": [-12, 2], "spark": [-4, 4]}}
+  ],
+  "rock climber who talks about 'sending' too much": [
+    {"id": "send_it", "name": "Take Them Climbing", "class": "dates", "scope": "pair",
+     "blurb": "Take {target} climbing and narrate the whole time.", "stats": {"trust": [-4, 10], "spark": [2, 12]}},
+    {"id": "beta_unsolicited", "name": "Give Unsolicited Beta", "class": "dates", "scope": "pair",
+     "blurb": "Give {target} unsolicited beta on an entirely unrelated life problem.", "stats": {"trust": [-8, 6], "spark": [-2, 8]}}
+  ],
+  "furry with a very normal day job": [
+    {"id": "fursona", "name": "Introduce the Fursona", "class": "dates", "scope": "pair",
+     "blurb": "Introduce {target} to your fursona.", "stats": {"trust": [-8, 12], "spark": [0, 12]}},
+    {"id": "con_photos", "name": "Show Con Photos", "class": "dates", "scope": "pair",
+     "blurb": "Show {target} photos from the last con at work, on the work laptop.", "stats": {"trust": [-6, 10], "spark": [-2, 8]}}
+  ],
+  "raw milk enthusiast with a lot of opinions": [
+    {"id": "raw_milk_pitch", "name": "Explain Raw Milk", "class": "dates", "scope": "pair",
+     "blurb": "Explain to {target}, at length, why raw milk changed your life.", "stats": {"trust": [-10, 6], "spark": [-2, 6]}},
+    {"id": "farmer_intro", "name": "Introduce Them to Your Farmer", "class": "dates", "scope": "pair",
+     "blurb": "Introduce {target} to 'your' farmer like it's a serious relationship.", "stats": {"trust": [-4, 10], "spark": [0, 8]}}
+  ],
+  "person who met their metamour on a raid night": [
+    {"id": "raid_night_invite", "name": "Invite to Raid Night", "class": "dates", "scope": "pair",
+     "blurb": "Invite {target} to raid night to meet everyone properly.", "stats": {"trust": [0, 12], "spark": [0, 10]}},
+    {"id": "loot_drama", "name": "Relitigate Loot Drama", "class": "dates", "scope": "pair",
+     "blurb": "Relitigate old guild loot drama with {target} for no reason.", "stats": {"trust": [-8, 8], "spark": [-4, 6]}}
+  ],
+  "tarot reader who overcharges everyone including their partners": [
+    {"id": "pull_a_card", "name": "Pull a Card on Them", "class": "dates", "scope": "pair",
+     "blurb": "Pull a tarot card on {target} mid-argument.", "stats": {"trust": [-6, 10], "spark": [-2, 8]}},
+    {"id": "invoice_partner", "name": "Send an Invoice", "class": "dates", "scope": "pair",
+     "blurb": "Actually send {target} an invoice for the reading.", "stats": {"trust": [-14, 2], "spark": [-4, 4]}}
+  ]
+}

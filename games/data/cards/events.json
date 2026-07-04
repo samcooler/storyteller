@@ -17,6 +17,7 @@
     "id": "meet_cutie",
     "name": "Randomly Meet Cutie",
     "class": "events",
+    "spawns_prospect": true,
     "blurb": "You randomly meet someone cute out in the world.",
     "stats": {"desire": [10, 28], "happiness": [4, 16]}
   },
