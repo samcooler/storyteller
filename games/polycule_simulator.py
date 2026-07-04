@@ -1044,7 +1044,7 @@ class PolyculeSimulator(Game):
             line("Nothing else scheduled yet.", small_font, ui.DIM_TEXT, indent=20)
 
     def draw(self, surface):
-        surface.fill((26, 18, 32))
+        surface.fill(ui.BG)
         w, h = surface.get_size()
         scale = ui.scale_factor(surface)
         title_font = ui.font(34, scale, title=True)
