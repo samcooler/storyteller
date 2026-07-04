@@ -63,13 +63,30 @@ def font(size, scale, title=False):
     return cached
 
 
-def draw_panel(surface, rect, scale=1.0, top_color=PASTEL_TOP, bottom_color=PASTEL_BOTTOM,
-               border_color=BORDER_OUTER, inner_border_color=BORDER_INNER):
-    height = rect.height
+_gradient_cache = {}
+
+
+def _gradient_surface(width, height, top_color, bottom_color):
+    key = (width, height, top_color, bottom_color)
+    cached = _gradient_cache.get(key)
+    if cached is not None:
+        return cached
+    if len(_gradient_cache) > 500:
+        _gradient_cache.clear()
+    grad = pygame.Surface((width, height))
     for y in range(height):
         t = y / max(height - 1, 1)
         color = tuple(int(top_color[i] + (bottom_color[i] - top_color[i]) * t) for i in range(3))
-        pygame.draw.line(surface, color, (rect.left, rect.top + y), (rect.right, rect.top + y))
+        pygame.draw.line(grad, color, (0, y), (width, y))
+    _gradient_cache[key] = grad
+    return grad
+
+
+def draw_panel(surface, rect, scale=1.0, top_color=PASTEL_TOP, bottom_color=PASTEL_BOTTOM,
+               border_color=BORDER_OUTER, inner_border_color=BORDER_INNER):
+    if rect.width > 0 and rect.height > 0:
+        grad = _gradient_surface(rect.width, rect.height, top_color, bottom_color)
+        surface.blit(grad, rect.topleft)
     border_w = max(1, round(3 * scale))
     inner_w = max(1, round(1 * scale))
     inset = max(2, round(6 * scale))
