@@ -62,6 +62,75 @@ SCHEDULE_OFFSETS = [("This week", 0), ("Next week", 1), ("In two weeks", 2)]
 TRAITS = ["extraversion", "openness", "conscientiousness", "security", "empathy"]
 STATUSES = ["happiness", "fulfillment", "energy", "stress", "desire"]
 
+# Single source of truth for every character-owned stat (5 traits + 5
+# statuses). Every display tier (dossier, roster row, selector tile, ring)
+# reads from this table instead of hand-picking which stats it bothers to
+# show, so all ten stay visually equal citizens even though only a couple
+# are hooked into card resolution today.
+STAT_INFO = {
+    "extraversion": {
+        "label": "Extraversion", "abbr": "EXT", "color": (255, 170, 90), "category": "trait",
+        "flavor": ("keeps to themself", "comfortable either way", "lights up every room"),
+    },
+    "openness": {
+        "label": "Openness", "abbr": "OPN", "color": (150, 210, 255), "category": "trait",
+        "flavor": ("set in their ways", "open to some new things", "always chasing something new"),
+    },
+    "conscientiousness": {
+        "label": "Conscientiousness", "abbr": "CON", "color": (180, 220, 140), "category": "trait",
+        "flavor": ("flies by the seat of their pants", "reasonably organized", "meticulously on top of everything"),
+    },
+    "security": {
+        "label": "Security", "abbr": "SEC", "color": (200, 170, 255), "category": "trait",
+        "flavor": ("easily rattled", "generally steady", "unshakeable"),
+    },
+    "empathy": {
+        "label": "Empathy", "abbr": "EMP", "color": (255, 150, 190), "category": "trait",
+        "flavor": ("not exactly attuned to others", "reads the room fine", "deeply tuned in to everyone around them"),
+    },
+    "happiness": {
+        "label": "Happiness", "abbr": "HAP", "color": (255, 210, 120), "category": "status",
+        "flavor": ("having a rough time lately", "doing okay", "genuinely thriving"),
+    },
+    "fulfillment": {
+        "label": "Fulfillment", "abbr": "FUL", "color": (140, 200, 200), "category": "status",
+        "flavor": ("feeling pretty unfulfilled", "getting some of what they need", "deeply fulfilled right now"),
+    },
+    "energy": {
+        "label": "Energy", "abbr": "NRG", "color": (150, 220, 255), "category": "status",
+        "flavor": ("running on empty", "holding steady", "full of energy"),
+    },
+    "stress": {
+        "label": "Stress", "abbr": "STR", "color": (220, 120, 120), "category": "status",
+        "flavor": ("totally relaxed", "a little tense", "stretched thin"),
+    },
+    "desire": {
+        "label": "Desire", "abbr": "DES", "color": (230, 140, 220), "category": "status",
+        "flavor": ("not feeling it lately", "simmering", "burning for it"),
+    },
+}
+STAT_ORDER = TRAITS + STATUSES
+STAT_COLORS = [STAT_INFO[k]["color"] for k in STAT_ORDER]
+
+# Relational stats live per-pair (member/member or member/prospect), not on
+# a single Character, but share the same color/label idiom as STAT_INFO.
+RELATIONAL_INFO = {
+    "trust": {"label": "Trust", "color": (140, 180, 240)},
+    "spark": {"label": "Spark", "color": (240, 140, 190)},
+    "interest": {"label": "Interest", "color": (255, 150, 190)},
+}
+
+
+def stat_flavor(key, value):
+    """Threshold-based prose fragment for a stat value, for dossier-level text."""
+    low, mid, high = STAT_INFO[key]["flavor"]
+    if value < 34:
+        return low
+    if value < 67:
+        return mid
+    return high
+
+
 COMMIT_THRESHOLD = 70
 MAX_PROSPECTS_PER_MEMBER = 3
 DRAW_MAX = 3
@@ -289,6 +358,12 @@ class Character:
         self.statuses = {s: rng.randint(40, 80) for s in STATUSES}
         self.preferred_activity = rng.choice(ACTIVITIES)
         self.hand = []
+
+    def stat_value(self, key):
+        return self.traits[key] if key in self.traits else self.statuses[key]
+
+    def stat_values(self, order=STAT_ORDER):
+        return [self.stat_value(k) for k in order]
 
     def deck(self):
         deck = list(GENERIC_CARDS)
@@ -864,11 +939,15 @@ class PolyculeSimulator(Game):
         pygame.draw.circle(surface, (255, 220, 120), center, node_r + int(4 * scale))
         pixel_portrait.draw_bust(surface, pygame.Rect(int(center[0] - node_r), int(center[1] - node_r),
                                                         node_r * 2, node_r * 2), active.seed)
+        stat_ring_r = node_r + int(4 * scale) + int(6 * scale)
+        ui.draw_ring_segments(surface, center, stat_ring_r, active.stat_values(), STAT_COLORS,
+                               thickness=max(2, int(4 * scale)))
         name_font = ui.font(20, scale)
         label = name_font.render(f"{active.name} (active)", True, ui.TEXT_COLOR)
-        surface.blit(label, label.get_rect(midtop=(center[0], center[1] + node_r + int(6 * scale))))
+        surface.blit(label, label.get_rect(midtop=(center[0], center[1] + stat_ring_r + int(6 * scale))))
 
         node_r2 = int(22 * scale)
+        stat_ring_r2 = node_r2 + int(3 * scale) + int(5 * scale)
         ring_font = ui.font(16, scale)
         for member in ring:
             pos = self.node_pos.get(member.name, center)
@@ -879,8 +958,10 @@ class PolyculeSimulator(Game):
             pygame.draw.circle(surface, ring_color, pos, node_r2 + int(3 * scale))
             pixel_portrait.draw_bust(surface, pygame.Rect(int(pos[0] - node_r2), int(pos[1] - node_r2),
                                                              node_r2 * 2, node_r2 * 2), member.seed)
+            ui.draw_ring_segments(surface, pos, stat_ring_r2, member.stat_values(), STAT_COLORS,
+                                   thickness=max(2, int(3 * scale)))
             label = ring_font.render(member.name, True, ui.TEXT_COLOR)
-            surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + node_r2 + int(4 * scale))))
+            surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + stat_ring_r2 + int(4 * scale))))
 
         node_r3 = int(14 * scale)
         for pname, prospect in self.prospects.items():
@@ -897,6 +978,31 @@ class PolyculeSimulator(Game):
             label = small_font.render(char.name, True, ui.DIM_TEXT)
             surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + node_r3 + int(3 * scale))))
 
+    def _stat_grid_height(self, scale, label_font):
+        label_h = label_font.get_height()
+        bar_h = max(3, int(6 * scale))
+        row_gap = max(1, int(2 * scale))
+        return 2 * (label_h + row_gap + bar_h) + row_gap
+
+    def _draw_stat_grid(self, surface, x, y, width, scale, char, label_font):
+        """Two rows of 5 abbreviated bars: traits on top, statuses below.
+        Shared by the roster row and (a denser variant of) the dossier."""
+        n = 5
+        gap = max(1, int(4 * scale))
+        cell_w = (width - gap * (n - 1)) / n
+        bar_h = max(3, int(6 * scale))
+        row_gap = max(1, int(2 * scale))
+        label_h = label_font.get_height()
+        for row, keys in enumerate((TRAITS, STATUSES)):
+            row_y = y + row * (label_h + row_gap + bar_h + row_gap)
+            for i, key in enumerate(keys):
+                cx = x + i * (cell_w + gap)
+                info = STAT_INFO[key]
+                label = label_font.render(info["abbr"], True, ui.DIM_TEXT)
+                surface.blit(label, (int(cx), int(row_y)))
+                bar_rect = pygame.Rect(int(cx), int(row_y + label_h + row_gap), max(1, int(cell_w)), bar_h)
+                ui.draw_bar(surface, bar_rect, char.stat_value(key), 100, info["color"], border_w=0)
+
     def _draw_roster(self, surface, rect, scale):
         ui.draw_panel(surface, rect, scale)
         title_font = ui.font(30, scale, title=True)
@@ -905,8 +1011,12 @@ class PolyculeSimulator(Game):
         surface.blit(title_font.render("Roster", True, ui.ACCENT), (rect.left + int(20 * scale), rect.top + int(14 * scale)))
         y = rect.top + int(60 * scale)
         available_h = rect.height - int(60 * scale) - int(50 * scale)
-        row_h = int(28 * scale) * 2 + int(38 * scale)
         portrait_r = int(28 * scale)
+        line_h = int(22 * scale)
+        rel_bar_h = max(4, int(8 * scale))
+        grid_h = self._stat_grid_height(scale, small_font)
+        content_h = line_h * 2 + int(4 * scale) + (rel_bar_h + 2) * 2 + int(6 * scale) + grid_h
+        row_h = max(portrait_r * 2 + int(6 * scale), content_h) + int(10 * scale)
         max_visible = max(1, available_h // row_h)
         self.roster_scroll = max(0, min(self.roster_scroll, max(0, len(self.members) - max_visible)))
         visible = self.members[self.roster_scroll:self.roster_scroll + max_visible]
@@ -922,22 +1032,13 @@ class PolyculeSimulator(Game):
             tx = px + portrait_r * 2 + int(12 * scale)
             name_tag = f"{member.name} (active)" if member.name == self.active.name else member.name
             surface.blit(body_font.render(name_tag, True, ui.TEXT_COLOR), (tx, y))
-            line_h = int(22 * scale)
             bar_w = rect.width - (tx - rect.left) - int(20 * scale)
             surface.blit(body_font.render(member.archetype, True, ui.DIM_TEXT), (tx, y + line_h))
             bars_y = y + line_h * 2 + int(4 * scale)
-            bar_h = max(4, int(8 * scale))
-            ui.draw_bar(surface, pygame.Rect(tx, bars_y, bar_w, bar_h), avg_trust, 100, (140, 180, 240))
-            ui.draw_bar(surface, pygame.Rect(tx, bars_y + bar_h + 2, bar_w, bar_h), avg_spark, 100, (240, 140, 190))
-            half = bar_w // 2 - int(4 * scale)
-            status_y = bars_y + (bar_h + 2) * 2 + 2
-            ui.draw_bar(surface, pygame.Rect(tx, status_y, half, bar_h),
-                        member.statuses["happiness"], 100, (255, 210, 120))
-            ui.draw_bar(surface, pygame.Rect(tx + half + int(8 * scale), status_y, half, bar_h),
-                        member.statuses["energy"], 100, (150, 220, 255))
-            traits_label = (f"Extra {member.traits['extraversion']}  Open {member.traits['openness']}  "
-                             f"Empathy {member.traits['empathy']}")
-            surface.blit(small_font.render(traits_label, True, ui.DIM_TEXT), (tx, status_y + bar_h + int(6 * scale)))
+            ui.draw_bar(surface, pygame.Rect(tx, bars_y, bar_w, rel_bar_h), avg_trust, 100, RELATIONAL_INFO["trust"]["color"])
+            ui.draw_bar(surface, pygame.Rect(tx, bars_y + rel_bar_h + 2, bar_w, rel_bar_h), avg_spark, 100, RELATIONAL_INFO["spark"]["color"])
+            grid_y = bars_y + (rel_bar_h + 2) * 2 + int(6 * scale)
+            self._draw_stat_grid(surface, tx, grid_y, bar_w, scale, member, small_font)
             y += row_h
 
     def _draw_calendar(self, surface, rect, scale):
@@ -1115,10 +1216,17 @@ class PolyculeSimulator(Game):
             ui.draw_bar(surface, pygame.Rect(rect.left + pad, y, bar_w, bar_h), stat, 100, (255, 150, 190))
             y += bar_h + int(5 * scale)
 
-        half = bar_w // 2 - int(2 * scale)
-        ui.draw_bar(surface, pygame.Rect(rect.left + pad, y, half, bar_h), char.statuses["happiness"], 100, (255, 210, 120))
-        ui.draw_bar(surface, pygame.Rect(rect.left + pad + half + int(4 * scale), y, half, bar_h),
-                    char.statuses["energy"], 100, (150, 220, 255))
+        # Dense 10-cell strip (all traits+statuses as thin bottom-up bars) -
+        # too little room here for labels, so this tile is numbers/color only.
+        strip_h = max(10, int(16 * scale))
+        n = len(STAT_ORDER)
+        gap = max(1, int(1 * scale))
+        cell_w = (bar_w - gap * (n - 1)) / n
+        values = char.stat_values()
+        for i, key in enumerate(STAT_ORDER):
+            cx = rect.left + pad + i * (cell_w + gap)
+            cell_rect = pygame.Rect(int(cx), y, max(1, int(cell_w)), strip_h)
+            ui.draw_bar_vertical(surface, cell_rect, values[i], 100, STAT_INFO[key]["color"], border_w=0)
 
     def _draw_target_cards(self, surface, content_rect, scale):
         names = self.target_options

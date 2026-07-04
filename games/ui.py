@@ -4,6 +4,7 @@ Everything here takes a `scale` factor (see `scale_factor`) so the same
 drawing code looks right on a small Pi touchscreen and a 4K monitor.
 """
 
+import math
 from pathlib import Path
 
 import pygame
@@ -128,4 +129,44 @@ def draw_bar(surface, rect, value, max_value, fill_color, bg_color=(40, 30, 45),
     frac = max(0.0, min(1.0, value / max_value))
     fill_rect = pygame.Rect(rect.left, rect.top, int(rect.width * frac), rect.height)
     pygame.draw.rect(surface, fill_color, fill_rect)
-    pygame.draw.rect(surface, border_color, rect, width=border_w)
+    if border_w > 0:
+        pygame.draw.rect(surface, border_color, rect, width=border_w)
+
+
+def draw_bar_vertical(surface, rect, value, max_value, fill_color, bg_color=(40, 30, 45), border_color=BORDER_OUTER, border_w=1):
+    """Bottom-up filled bar, for dense side-by-side stat strips."""
+    pygame.draw.rect(surface, bg_color, rect)
+    frac = max(0.0, min(1.0, value / max_value))
+    fill_h = int(rect.height * frac)
+    fill_rect = pygame.Rect(rect.left, rect.bottom - fill_h, rect.width, fill_h)
+    pygame.draw.rect(surface, fill_color, fill_rect)
+    if border_w > 0:
+        pygame.draw.rect(surface, border_color, rect, width=border_w)
+
+
+def draw_ring_segments(surface, center, radius, values, colors, thickness=4, gap_deg=6,
+                        bg_color=(60, 50, 65), max_value=100):
+    """Draw a multi-stat gauge as N arc segments around a circle.
+
+    Segments are laid out clockwise starting at 12 o'clock, one per entry in
+    `values`/`colors`. Each segment's full angular span is drawn dim first,
+    then overdrawn with the live color out to `value / max_value` of that
+    span, so partial fill reads at a glance without needing numbers.
+    """
+    n = len(values)
+    if n == 0 or radius <= 0:
+        return
+    rect = pygame.Rect(center[0] - radius, center[1] - radius, radius * 2, radius * 2)
+    sector = 2 * math.pi / n
+    gap = math.radians(gap_deg)
+    for i in range(n):
+        lo = math.pi / 2 - (i + 1) * sector + gap / 2
+        hi = math.pi / 2 - i * sector - gap / 2
+        if hi <= lo:
+            continue
+        pygame.draw.arc(surface, bg_color, rect, lo, hi, thickness)
+        frac = max(0.0, min(1.0, values[i] / max_value))
+        if frac <= 0:
+            continue
+        fill_hi = lo + (hi - lo) * frac
+        pygame.draw.arc(surface, colors[i], rect, lo, fill_hi, thickness)
