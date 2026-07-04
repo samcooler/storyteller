@@ -361,6 +361,7 @@ class PolyculeSimulator(Game):
         self.target_index = 0
         self.pending_card = None
         self.result_text = []
+        self.result_tier = None
 
         self.pending_target = None
         self.sub_kind = None
@@ -502,9 +503,11 @@ class PolyculeSimulator(Game):
     def _resolve(self, card, target_name):
         member = self.active
         flavor = self._flavor(card, target_name)
+        self.result_tier = None
         if card["kind"] == "bond":
             rel = self.get_rel(member.name, target_name)
             tier = self._roll_tier()
+            self.result_tier = tier
             trust_d = self._tier_value(*card["trust"], tier)
             spark_d = self._tier_value(*card["spark"], tier)
             rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
@@ -513,6 +516,7 @@ class PolyculeSimulator(Game):
         elif card["kind"] in ("court", "flag"):
             prospect = self.prospects[target_name]
             tier = self._roll_tier()
+            self.result_tier = tier
             delta = self._tier_value(*card["interest"], tier)
             prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
             self.result_text = [flavor, OUTCOME_TIERS[tier], f"({delta:+d} interest)"]
@@ -521,6 +525,7 @@ class PolyculeSimulator(Game):
                 self.result_text.append(f"{target_name} stops responding entirely.")
         elif card["kind"] == "exit":
             tier = self._roll_tier()
+            self.result_tier = tier
             is_prospect = target_name in self.prospects
             guaranteed = card.get("guaranteed_exit", False)
             if is_prospect:
@@ -554,6 +559,7 @@ class PolyculeSimulator(Game):
             self.result_text = [flavor, f"{new_member.name} joins the cule for real!"]
         elif card["kind"] in ("group", "chaos"):
             tier = self._roll_tier()
+            self.result_tier = tier
             h_d = self._tier_value(*card["harmony"], tier)
             c_d = self._tier_value(*card["chaos"], tier)
             self.harmony = max(0, min(100, self.harmony + h_d))
@@ -594,6 +600,7 @@ class PolyculeSimulator(Game):
 
     def _finish_card_fizzle(self, message):
         self.result_text = [message]
+        self.result_tier = None
         self.hand.remove(self.pending_card)
         self.hand_index = 0
         self._spend_energy()
@@ -631,6 +638,7 @@ class PolyculeSimulator(Game):
                 f"{self.pending_target} is in for {value.lower()} on {self.chosen_day}.",
                 f"(scheduled for week {self.date_target_week})",
             ]
+            self.result_tier = None
             self.hand.remove(self.pending_card)
             self.hand_index = 0
             self._spend_energy()
@@ -687,6 +695,7 @@ class PolyculeSimulator(Game):
             for ev in events:
                 lines.extend(self._resolve_scheduled_event(ev))
             self.result_text = lines
+            self.result_tier = None
             self.state = "recap"
         else:
             self._start_turn(self.active)
@@ -737,6 +746,7 @@ class PolyculeSimulator(Game):
                     targets = self._card_targets(card)
                     if not targets:
                         self.result_text = [f"{card['name']} has no one left to target. It fizzles."]
+                        self.result_tier = None
                         self.hand.remove(card)
                         self.hand_index = 0
                         self.state = "result"
@@ -767,9 +777,9 @@ class PolyculeSimulator(Game):
                     self.hand_index = 0
                     self.state = "result"
         elif self.state == "sub_choice":
-            if event.key in (pygame.K_UP, pygame.K_w):
+            if event.key in (pygame.K_LEFT, pygame.K_a, pygame.K_UP, pygame.K_w):
                 self.sub_index = (self.sub_index - 1) % len(self.sub_options)
-            elif event.key in (pygame.K_DOWN, pygame.K_s):
+            elif event.key in (pygame.K_RIGHT, pygame.K_d, pygame.K_DOWN, pygame.K_s):
                 self.sub_index = (self.sub_index + 1) % len(self.sub_options)
             elif event.key == pygame.K_BACKSPACE:
                 self.state = "hand"
@@ -1130,20 +1140,29 @@ class PolyculeSimulator(Game):
                 "week": f"When should {self.active.name} plan with {self.pending_target}?",
                 "day": f"What day works for {self.pending_target}?",
                 "counter": f"{self.pending_target} can't do {self.proposed_day}.",
-                "activity": f"Where should {self.active.name} and {self.pending_target} go?",
+                "activity": f"Where should {self.active.name} and {self.pending_target} go on {self.chosen_day}?",
             }
-            surface.blit(body_font.render(prompts.get(self.sub_kind, "Choose:"), True, ui.TEXT_COLOR),
-                         (content_rect.left, content_rect.top))
-            labels = [label for label, _value in self.sub_options]
-            list_bottom = self._draw_option_list(surface, content_rect, body_font, labels, self.sub_index)
+            ui.blit_wrapped(surface, body_font, prompts.get(self.sub_kind, "Choose:"), ui.TEXT_COLOR,
+                             content_rect.left + content_rect.width // 2, content_rect.top, content_rect.width)
+            tiles_top = content_rect.top + int(40 * scale)
+            tiles_rect = pygame.Rect(content_rect.left, tiles_top, content_rect.width,
+                                      max(0, content_rect.bottom - tiles_top))
+            if self.sub_kind == "day":
+                list_bottom = self._draw_day_strip(surface, tiles_rect, scale, self.sub_options, self.sub_index)
+            else:
+                list_bottom = self._draw_choice_tiles(surface, tiles_rect, scale, self.sub_options, self.sub_index)
             hint = small_font.render("Enter to confirm, Backspace to cancel", True, ui.DIM_TEXT)
             surface.blit(hint, (content_rect.left, min(list_bottom + int(10 * scale), content_rect.bottom - int(6 * scale))))
         elif self.state in ("result", "recap"):
+            text_top = content_rect.top
+            if self.result_tier is not None:
+                self._draw_tier_meter(surface, content_rect, scale, self.result_tier)
+                text_top += int(34 * scale)
             for i, text_line in enumerate(self.result_text):
                 surface.blit(body_font.render(text_line, True, ui.TEXT_COLOR),
-                             (content_rect.left, content_rect.top + i * int(32 * scale)))
+                             (content_rect.left, text_top + i * int(32 * scale)))
             hint = small_font.render("Enter to continue", True, ui.DIM_TEXT)
-            surface.blit(hint, (content_rect.left, content_rect.top + len(self.result_text) * int(32 * scale) + int(20 * scale)))
+            surface.blit(hint, (content_rect.left, text_top + len(self.result_text) * int(32 * scale) + int(20 * scale)))
         elif self.state == "draw":
             if self.drawn_cards:
                 msg = f"{self.active.name} draws {len(self.drawn_cards)} card(s):"
@@ -1294,28 +1313,73 @@ class PolyculeSimulator(Game):
                 pygame.draw.rect(surface, tint, bg_rect)
                 surface.blit(badge_label, badge_rect)
 
-    def _draw_option_list(self, surface, content_rect, body_font, labels, selected_index):
-        scale = ui.scale_factor(self.screen)
-        top = content_rect.top + int(50 * scale)
-        bottom = content_rect.bottom - int(36 * scale)
-        available = max(1, bottom - top)
-        n = max(1, len(labels))
-        size = 24
-        font_obj = body_font
-        while size > 12:
-            font_obj = ui.font(size, scale)
-            if (font_obj.get_height() + int(6 * scale)) * n <= available:
-                break
-            size -= 2
-        spacing = font_obj.get_height() + int(6 * scale)
-        for i, text in enumerate(labels):
-            color = ui.ACCENT if i == selected_index else ui.TEXT_COLOR
-            opt_y = top + i * spacing
-            if i == selected_index:
-                ui.draw_cursor(surface, (content_rect.left + int(2 * scale), opt_y + spacing // 2), size=int(10 * scale))
-            label = font_obj.render(text, True, color)
-            surface.blit(label, (content_rect.left + int(24 * scale), opt_y))
-        return top + n * spacing
+    def _draw_choice_tiles(self, surface, content_rect, scale, options, selected_index):
+        """Horizontal tile picker for the date sub-choice flow (week/counter/activity
+        steps) - a handful of options, tinted green/red for accept/decline."""
+        gap = int(14 * scale)
+        n = max(1, len(options))
+        card_w = min(int(170 * scale), max(int(90 * scale), (content_rect.width - gap * (n - 1)) // n))
+        card_h = min(content_rect.height, int(90 * scale))
+        total_w = n * card_w + (n - 1) * gap
+        start_x = content_rect.left + max(0, content_rect.width - total_w) // 2
+        label_font = ui.font(16, scale)
+        for i, (label, value) in enumerate(options):
+            rect = pygame.Rect(start_x + i * (card_w + gap), content_rect.top, card_w, card_h)
+            selected = i == selected_index
+            if value == "decline":
+                tint = (230, 90, 90)
+            elif value == "accept":
+                tint = (150, 220, 150)
+            else:
+                tint = ui.ACCENT
+            top_color = (110, 70, 130) if selected else ui.PASTEL_TOP
+            bottom_color = (150, 90, 160) if selected else ui.PASTEL_BOTTOM
+            ui.draw_panel(surface, rect, scale, top_color=top_color, bottom_color=bottom_color,
+                          border_color=tint if selected else ui.BORDER_OUTER)
+            ui.blit_wrapped(surface, label_font, label, ui.TEXT_COLOR,
+                             rect.centerx, rect.centery - label_font.get_height() // 2, rect.width - int(10 * scale))
+        return content_rect.top + card_h
+
+    def _draw_day_strip(self, surface, content_rect, scale, options, selected_index):
+        """7-cell calendar-style row for picking a day of the week."""
+        gap = int(8 * scale)
+        n = max(1, len(options))
+        card_w = min(int(72 * scale), max(int(36 * scale), (content_rect.width - gap * (n - 1)) // n))
+        card_h = min(content_rect.height, int(80 * scale))
+        total_w = n * card_w + (n - 1) * gap
+        start_x = content_rect.left + max(0, content_rect.width - total_w) // 2
+        label_font = ui.font(18, scale)
+        for i, (label, _value) in enumerate(options):
+            rect = pygame.Rect(start_x + i * (card_w + gap), content_rect.top, card_w, card_h)
+            selected = i == selected_index
+            top_color = (110, 70, 130) if selected else ui.PASTEL_TOP
+            bottom_color = (150, 90, 160) if selected else ui.PASTEL_BOTTOM
+            border = ui.ACCENT if selected else ui.BORDER_OUTER
+            ui.draw_panel(surface, rect, scale, top_color=top_color, bottom_color=bottom_color,
+                          border_color=border, corner_style="diamond")
+            label_surf = label_font.render(label, True, ui.TEXT_COLOR)
+            surface.blit(label_surf, label_surf.get_rect(center=rect.center))
+        return content_rect.top + card_h
+
+    def _draw_tier_meter(self, surface, content_rect, scale, tier):
+        """10-segment red-to-green meter showing where a roll landed on OUTCOME_TIERS,
+        with the achieved segment popped forward and outlined."""
+        n = len(OUTCOME_TIERS)
+        gap = max(1, int(2 * scale))
+        seg_w = max(1, (content_rect.width - gap * (n - 1)) // n)
+        h = int(14 * scale)
+        lo, hi = (200, 80, 80), (110, 210, 130)
+        for i in range(n):
+            frac = i / (n - 1)
+            color = tuple(int(lo[c] + (hi[c] - lo[c]) * frac) for c in range(3))
+            achieved = i == tier
+            pop = int(3 * scale) if achieved else 0
+            rect = pygame.Rect(content_rect.left + i * (seg_w + gap), content_rect.top - pop,
+                                seg_w, h + pop * 2)
+            fill = color if achieved else tuple(c // 2 + 20 for c in color)
+            pygame.draw.rect(surface, fill, rect)
+            if achieved:
+                pygame.draw.rect(surface, ui.ACCENT, rect, width=max(1, int(2 * scale)))
 
     def _draw_hand_row(self, surface, main_rect, scale, body_font, small_font):
         options = list(self.hand) if self.state == "discard" else self.hand + [END_WEEK]
