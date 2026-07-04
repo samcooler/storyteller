@@ -9,10 +9,6 @@ from games import ui
 FPS = 60
 INTERNAL_SIZE = (1920, 1080)  # real, low render resolution - upscaled with square pixels
 
-BG = (18, 18, 24)
-FG = (240, 240, 240)
-ACCENT = (255, 200, 60)
-
 
 def create_screen():
     """Fill whatever display we're run on (Pi touchscreen, 4K monitor, laptop...).
@@ -57,30 +53,74 @@ class Menu:
         return None
 
     def draw(self, surface):
-        surface.fill(BG)
+        surface.fill(ui.BG)
         scale = ui.scale_factor(surface)
         title_font = ui.font(64, scale, title=True)
         item_font = ui.font(40, scale)
         hint_font = ui.font(24, scale)
 
         w, h = surface.get_size()
-        title = title_font.render("Silly Game Machine", True, ACCENT)
+        title = title_font.render("Silly Game Machine", True, ui.ACCENT)
         surface.blit(title, title.get_rect(center=(w // 2, int(60 * scale))))
 
         start_y = int(150 * scale)
         spacing = int(50 * scale)
         for i, game_cls in enumerate(self.games):
-            color = ACCENT if i == self.selected else FG
+            color = ui.ACCENT if i == self.selected else ui.TEXT_COLOR
             label = item_font.render(game_cls.name, True, color)
             surface.blit(label, label.get_rect(center=(w // 2, start_y + i * spacing)))
 
         desc = self.games[self.selected].description
         if desc:
-            desc_label = hint_font.render(desc, True, FG)
+            desc_label = hint_font.render(desc, True, ui.TEXT_COLOR)
             surface.blit(desc_label, desc_label.get_rect(center=(w // 2, h - int(60 * scale))))
 
-        hint = hint_font.render("Arrows to choose, Enter to play, Esc to quit", True, (150, 150, 150))
+        hint = hint_font.render("Arrows to choose, Enter to play, O for Options, Esc to quit", True, ui.DIM_TEXT)
         surface.blit(hint, hint.get_rect(center=(w // 2, h - int(25 * scale))))
+
+
+class OptionsMenu:
+    """Centered modal dialog for app-wide settings (currently just the color theme)."""
+
+    def __init__(self):
+        self.selected = 0
+        self.rows = ["theme"]
+
+    def handle_event(self, event):
+        """Returns True when the dialog should close."""
+        if event.type != pygame.KEYDOWN:
+            return False
+        if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
+            return True
+        if event.key in (pygame.K_LEFT, pygame.K_a):
+            ui.cycle_theme(-1)
+        elif event.key in (pygame.K_RIGHT, pygame.K_d):
+            ui.cycle_theme(1)
+        return False
+
+    def draw(self, surface):
+        scale = ui.scale_factor(surface)
+        w, h = surface.get_size()
+        dialog = pygame.Rect(0, 0, int(420 * scale), int(200 * scale))
+        dialog.center = (w // 2, h // 2)
+        ui.draw_panel(surface, dialog, scale, corner_style="diamond")
+
+        title_font = ui.font(30, scale, title=True)
+        body_font = ui.font(24, scale)
+        hint_font = ui.font(18, scale)
+
+        title = title_font.render("Options", True, ui.ACCENT)
+        surface.blit(title, title.get_rect(midtop=(dialog.centerx, dialog.top + int(18 * scale))))
+
+        label = body_font.render("Theme", True, ui.TEXT_COLOR)
+        theme_label = ui.THEMES[ui.current_theme_name()]["label"]
+        value = body_font.render(f"< {theme_label} >", True, ui.ACCENT)
+        row_y = dialog.top + int(90 * scale)
+        surface.blit(label, label.get_rect(midleft=(dialog.left + int(30 * scale), row_y)))
+        surface.blit(value, value.get_rect(midright=(dialog.right - int(30 * scale), row_y)))
+
+        hint = hint_font.render("Left/Right to change, Enter or Esc to close", True, ui.DIM_TEXT)
+        surface.blit(hint, hint.get_rect(midbottom=(dialog.centerx, dialog.bottom - int(16 * scale))))
 
 
 def main():
@@ -95,6 +135,8 @@ def main():
     render_scale = dest_rect.width / INTERNAL_SIZE[0]
 
     menu = Menu(render_surface, GAMES)
+    options_menu = OptionsMenu()
+    showing_options = False
     active_game = None
 
     running = True
@@ -111,16 +153,22 @@ def main():
                 iy = (ey - dest_rect.top) / render_scale
                 event = pygame.event.Event(event.type, {**event.dict, "pos": (ix, iy)})
 
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if showing_options:
+                if options_menu.handle_event(event):
+                    showing_options = False
+            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 if active_game is None:
                     running = False
                 else:
                     active_game = None
             elif active_game is None:
-                chosen = menu.handle_event(event)
-                if chosen is not None:
-                    active_game = chosen(render_surface)
-                    active_game.reset()
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_o:
+                    showing_options = True
+                else:
+                    chosen = menu.handle_event(event)
+                    if chosen is not None:
+                        active_game = chosen(render_surface)
+                        active_game.reset()
             else:
                 active_game.handle_event(event)
 
@@ -129,6 +177,9 @@ def main():
         else:
             active_game.update(dt)
             active_game.draw(render_surface)
+
+        if showing_options:
+            options_menu.draw(render_surface)
 
         screen.fill((0, 0, 0))
         pygame.transform.scale(render_surface, dest_rect.size, screen.subsurface(dest_rect))
