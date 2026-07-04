@@ -12,8 +12,8 @@ python3 -m venv .venv
 ```
 
 By default it fills whatever display it's run on (auto-detected, true
-fullscreen). Pass `--windowed` for a smaller 1600x1200 dev window instead.
-Everything renders internally at a fixed 800x600 and is upscaled with square
+fullscreen). Pass `--windowed` for a 1600x1200 dev window instead.
+Everything renders internally at a fixed 1600x1200 and is upscaled with square
 pixels (integer scale only, so it stays crisp) — keeps it fast on the Pi
 regardless of the actual display resolution.
 
@@ -75,11 +75,11 @@ entry later once there's more than one game worth showing off.
 
 ### Matching the Pi's HDMI output to the 4K monitor
 
-`fit_rect` in `main.py` only ever scales the internal 800x600 render surface
+`fit_rect` in `main.py` only ever scales the internal 1600x1200 render surface
 by a whole number (so pixel art stays crisp), so whatever the actual display
 resolution is, the game fills it exactly only when that resolution is a clean
-multiple of 800x600. Left at the monitor's native 4K (3840x2160), the best
-whole-number fit is 3x (2400x1800), leaving a visible black letterboxed
+multiple of 1600x1200. Left at the monitor's native 4K (3840x2160), the best
+whole-number fit is 2x (3200x2400), leaving a visible black letterboxed
 border on all sides.
 
 This is a physical Pi setting, not part of the repo. The Pi runs the modern
@@ -95,8 +95,9 @@ profile {
 }
 ```
 
-That's exactly 2x the 800x600 internal render size (confirmed available via
+That's exactly 1x the 1600x1200 internal render size (confirmed available via
 `wlr-randr` on the Dell U3219Q here), so the game fills the screen
-edge-to-edge with no letterboxing. Apply it immediately with
+edge-to-edge with no letterboxing — and at 1x scale there's no upscaling
+blur at all, just native pixels. Apply it immediately with
 `pkill -HUP kanshi` (no reboot needed) — it also takes effect automatically
 on future logins since kanshi re-reads this file on start.

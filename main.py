@@ -7,7 +7,7 @@ from games import GAMES
 from games import ui
 
 FPS = 60
-INTERNAL_SIZE = (800, 600)  # real, low render resolution - upscaled with square pixels
+INTERNAL_SIZE = (1600, 1200)  # real, low render resolution - upscaled with square pixels
 
 BG = (18, 18, 24)
 FG = (240, 240, 240)
