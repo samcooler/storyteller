@@ -1335,7 +1335,7 @@ class PolyculeSimulator(Game):
             self._draw_step_row(surface, pygame.Rect(main_rect.left + int(20 * scale), content_top,
                                                        main_rect.width - int(40 * scale), step_row_h), scale, step_index)
             content_top += step_row_h + int(14 * scale)
-        content_bottom = main_rect.bottom - int(200 * scale)
+        content_bottom = main_rect.bottom - self._hand_row_reserved_height(scale)
         content_rect = pygame.Rect(main_rect.left + int(20 * scale), content_top,
                                     main_rect.width - int(40 * scale), max(0, content_bottom - content_top))
 
@@ -1658,8 +1658,52 @@ class PolyculeSimulator(Game):
         card_surf.blit(kind_label, kind_label.get_rect(midbottom=(rect.centerx, rect.bottom - int(8 * scale))))
         return card_surf
 
+    def _hand_row_selecting(self):
+        """Whether the bottom hand row is the thing driving input right now -
+        only true during the actual card-selection steps (playing or
+        discarding). The "draw" state hides the row entirely elsewhere; every
+        other state (target/sub_choice/result/recap) just wants a quiet
+        reminder of what's in hand, not a full interactive fan."""
+        return self.state in ("hand", "discard")
+
+    def _hand_row_reserved_height(self, scale):
+        """Vertical space to leave for the bottom hand row. Full-size while it's
+        an active selector; collapsed to a title strip otherwise (or nearly
+        nothing during "draw", where the row isn't drawn at all), so other
+        stages get more room for their own content above."""
+        if self.state == "draw":
+            return int(20 * scale)
+        if self._hand_row_selecting():
+            return int(200 * scale)
+        return int(60 * scale)
+
+    def _draw_hand_row_collapsed(self, surface, main_rect, scale, cards):
+        """Title-only strip shown while the hand isn't the active selector -
+        just enough to remind you what's in hand without eating the space a
+        full fanned row would reserve."""
+        margin = int(20 * scale)
+        gap = int(8 * scale)
+        n = len(cards)
+        card_h = int(30 * scale)
+        available = main_rect.width - margin * 2 - gap * (n - 1)
+        card_w = min(int(120 * scale), max(int(40 * scale), available // n))
+        total_w = n * card_w + (n - 1) * gap
+        start_x = main_rect.centerx - total_w // 2
+        y = main_rect.bottom - margin - card_h
+        name_font = ui.font(min(13, max(9, card_w // 11)), scale)
+        for i, card in enumerate(cards):
+            rect = pygame.Rect(start_x + i * (card_w + gap), y, card_w, card_h)
+            ui.draw_panel(surface, rect, scale, border_color=ui.BORDER_OUTER)
+            display_name, _ = self._card_face(card)
+            ui.blit_wrapped(surface, name_font, display_name, ui.DIM_TEXT,
+                             rect.centerx, rect.centery - name_font.get_height() // 2, card_w - int(8 * scale))
+
     def _draw_hand_row(self, surface, main_rect, scale, body_font, small_font):
         cards = list(self.hand)
+        if not self._hand_row_selecting():
+            if cards:
+                self._draw_hand_row_collapsed(surface, main_rect, scale, cards)
+            return
         show_end_button = self.state != "discard"
         nav_options = cards + [END_WEEK] if show_end_button else cards
         if not cards and not show_end_button:
