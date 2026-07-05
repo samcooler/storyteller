@@ -849,17 +849,31 @@ class PolyculeSimulator(Game):
                 self._start_turn(self.active)
 
     def _network_geometry(self):
+        """Left panel = turn/harmony header, then a row of member stamps
+        (current cule, active one highlighted), then a row of the active
+        member's prospects, then the relationship diagram - now a compact
+        iconographic dot graph rather than the main event, since the stamp
+        rows above already carry the "who's who" identity work."""
         w, h = self.screen.get_size()
         scale = ui.scale_factor(self.screen)
         panel_w = int(w * 0.42)
         panel = pygame.Rect(int(16 * scale), int(16 * scale), panel_w, h - int(32 * scale))
-        header_h = int(110 * scale)
-        diagram = pygame.Rect(panel.left + int(10 * scale), panel.top + header_h,
-                               panel.width - int(20 * scale), panel.height - header_h - int(10 * scale))
+        header_h = int(132 * scale)
+        members_row_h = int(74 * scale)
+        prospects_row_h = int(70 * scale)
+        row_gap = int(8 * scale)
+        rows_top = panel.top + header_h
+        members_rect = pygame.Rect(panel.left + int(10 * scale), rows_top,
+                                    panel.width - int(20 * scale), members_row_h)
+        prospects_rect = pygame.Rect(panel.left + int(10 * scale), members_rect.bottom + row_gap,
+                                      panel.width - int(20 * scale), prospects_row_h)
+        diagram_top = prospects_rect.bottom + row_gap
+        diagram = pygame.Rect(panel.left + int(10 * scale), diagram_top,
+                               panel.width - int(20 * scale), panel.height - (diagram_top - panel.top) - int(10 * scale))
         center = diagram.center
-        max_r = min(diagram.width, diagram.height) / 2 - int(34 * scale)
-        min_r = int(45 * scale)
-        return panel, diagram, center, min_r, max_r, scale
+        max_r = min(diagram.width, diagram.height) / 2 - int(20 * scale)
+        min_r = int(26 * scale)
+        return panel, diagram, center, min_r, max_r, scale, members_rect, prospects_rect
 
     @staticmethod
     def _strength(rel):
@@ -874,6 +888,18 @@ class PolyculeSimulator(Game):
 
     def _prospect_color(self, t):
         return self._lerp_color((60, 55, 70), (255, 150, 190), t)
+
+    @staticmethod
+    def _initial(name):
+        return name[:1].upper() if name else "?"
+
+    @staticmethod
+    def _truncate_to_width(font_obj, text, max_width):
+        if font_obj.size(text)[0] <= max_width:
+            return text
+        while text and font_obj.size(text + "…")[0] > max_width:
+            text = text[:-1]
+        return (text + "…") if text else "…"
 
     def _current_highlight(self):
         if self.state == "target" and self.target_options:
@@ -943,7 +969,7 @@ class PolyculeSimulator(Game):
 
     def update(self, dt):
         self.anim_t += dt
-        _, diagram, center, min_r, max_r, scale = self._network_geometry()
+        _, diagram, center, min_r, max_r, scale, _, _ = self._network_geometry()
         active = self.active
         ring = [m for m in self.members if m.name != active.name]
         rate = min(1.0, dt * 2.5)
@@ -956,7 +982,7 @@ class PolyculeSimulator(Game):
             radius = max_r - strength * (max_r - min_r)
             ring_positions[member.name] = (center[0] + radius * math.cos(angle),
                                             center[1] + radius * math.sin(angle))
-        node_diameter = 2 * int(19 * scale)
+        node_diameter = 2 * int(9 * scale)
         ring_positions = self._relax_ring_positions(ring_positions, center, min_r, max_r, node_diameter)
 
         # Bond-strength radii tend to pull everyone in close to the center, leaving
@@ -970,7 +996,7 @@ class PolyculeSimulator(Game):
                 for name, (x, y) in ring_positions.items():
                     ring_positions[name] = (center[0] + (x - center[0]) * zoom, center[1] + (y - center[1]) * zoom)
 
-        ring_margin = int(19 * scale) + int(22 * scale)  # node radius + label line
+        ring_margin = int(9 * scale) + int(16 * scale)  # node radius + label line
         for name, pos in ring_positions.items():
             ring_positions[name] = self._clamp_to_rect(pos, diagram, ring_margin)
 
@@ -979,14 +1005,14 @@ class PolyculeSimulator(Game):
             cur = self.node_pos.get(name, target)
             self.node_pos[name] = (cur[0] + (target[0] - cur[0]) * rate, cur[1] + (target[1] - cur[1]) * rate)
 
-        prospect_margin = int(12 * scale) + int(18 * scale)
+        prospect_margin = int(6 * scale) + int(14 * scale)
         for pname, prospect in self.prospects.items():
             anchor = self.node_pos.get(prospect["met_by"], center)
             siblings = [n for n, p in self.prospects.items() if p["met_by"] == prospect["met_by"]]
             idx = siblings.index(pname)
             angle = (idx / max(1, len(siblings))) * 2 * math.pi + 0.6
             strength = prospect["interest"] / 100.0
-            sat_max, sat_min = 74 * scale, 54 * scale
+            sat_max, sat_min = 50 * scale, 36 * scale
             radius = sat_max - strength * (sat_max - sat_min)
             target = (anchor[0] + radius * math.cos(angle), anchor[1] + radius * math.sin(angle))
             target = self._clamp_to_rect(target, diagram, prospect_margin)
@@ -1027,48 +1053,108 @@ class PolyculeSimulator(Game):
             width = max(1, round((1 + t * 5) * scale))
             ui.draw_dashed_line(surface, color, anchor, pos, width, dash=int(8 * scale), gap=int(5 * scale))
 
-        node_r = int(23 * scale)
-        pygame.draw.circle(surface, (255, 220, 120), center, node_r + int(4 * scale))
-        pixel_portrait.draw_bust(surface, pygame.Rect(int(center[0] - node_r), int(center[1] - node_r),
-                                                        node_r * 2, node_r * 2), active.seed)
-        stat_ring_r = node_r + int(4 * scale) + int(6 * scale)
-        ui.draw_ring_segments(surface, center, stat_ring_r, active.stat_values(), STAT_COLORS,
-                               thickness=max(2, int(4 * scale)))
-        name_font = ui.font(20, scale)
-        label = name_font.render(active.name, True, ui.TEXT_COLOR)
-        surface.blit(label, label.get_rect(midtop=(center[0], center[1] + stat_ring_r + int(6 * scale))))
+        # Iconographic nodes: plain color-coded dots + initials instead of full
+        # busts and stat-ring halos - identity and stat detail already live in
+        # the stamp rows above, so the diagram itself only needs to read as a
+        # small, analytical map of who's connected to whom.
+        glyph_font = ui.font(12, scale)
+        tiny_font = ui.font(11, scale)
 
-        node_r2 = int(19 * scale)
-        stat_ring_r2 = node_r2 + int(3 * scale) + int(5 * scale)
-        ring_font = ui.font(16, scale)
+        node_r = int(13 * scale)
+        pygame.draw.circle(surface, (255, 220, 120), center, node_r)
+        pygame.draw.circle(surface, ui.BORDER_OUTER, center, node_r, width=max(1, int(2 * scale)))
+        glyph = glyph_font.render(self._initial(active.name), True, (40, 30, 20))
+        surface.blit(glyph, glyph.get_rect(center=center))
+        name_label = tiny_font.render(active.name, True, ui.TEXT_COLOR)
+        surface.blit(name_label, name_label.get_rect(midtop=(center[0], center[1] + node_r + int(3 * scale))))
+
+        node_r2 = int(9 * scale)
         for member in ring:
             pos = self.node_pos.get(member.name, center)
             if member.name == highlight:
                 self._draw_glow(surface, pos, node_r2, scale)
             t = self._strength(self.get_rel(active.name, member.name))
             ring_color = self._bond_color(t)
-            pygame.draw.circle(surface, ring_color, pos, node_r2 + int(3 * scale))
-            pixel_portrait.draw_bust(surface, pygame.Rect(int(pos[0] - node_r2), int(pos[1] - node_r2),
-                                                             node_r2 * 2, node_r2 * 2), member.seed)
-            ui.draw_ring_segments(surface, pos, stat_ring_r2, member.stat_values(), STAT_COLORS,
-                                   thickness=max(2, int(3 * scale)))
-            label = ring_font.render(member.name, True, ui.TEXT_COLOR)
-            surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + stat_ring_r2 + int(4 * scale))))
+            pygame.draw.circle(surface, ring_color, pos, node_r2)
+            pygame.draw.circle(surface, ui.BORDER_OUTER, pos, node_r2, width=1)
+            label = tiny_font.render(member.name, True, ui.TEXT_COLOR)
+            surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + node_r2 + int(3 * scale))))
 
-        node_r3 = int(12 * scale)
+        node_r3 = int(6 * scale)
         for pname, prospect in self.prospects.items():
             pos = self.node_pos.get(pname, center)
             if pname == highlight:
                 self._draw_glow(surface, pos, node_r3, scale)
             t = prospect["interest"] / 100.0
             ring_color = self._prospect_color(t)
-            pygame.draw.circle(surface, ring_color, pos, node_r3 + int(2 * scale))
+            pygame.draw.circle(surface, ring_color, pos, node_r3, width=max(1, int(2 * scale)))
+
+    def _draw_member_row(self, surface, rect, scale):
+        """Stamp-size portraits for every current cule member, active one
+        highlighted - the "who's here" row the diagram used to have to carry
+        on its own."""
+        caption_font = ui.font(13, scale, title=True)
+        name_font = ui.font(12, scale)
+        caption = caption_font.render("MEMBERS", True, ui.ACCENT)
+        surface.blit(caption, (rect.left, rect.top))
+        row_y = rect.top + caption.get_height() + int(4 * scale)
+
+        n = max(1, len(self.members))
+        gap = int(8 * scale)
+        default_size = int(38 * scale)
+        stamp_size = int(min(default_size, max(int(22 * scale), (rect.width - gap * (n - 1)) / n)))
+        active_name = self.active.name
+        for i, member in enumerate(self.members):
+            x = rect.left + i * (stamp_size + gap)
+            stamp_rect = pygame.Rect(x, row_y, stamp_size, stamp_size)
+            is_active = member.name == active_name
+            if is_active:
+                bg = stamp_rect.inflate(int(6 * scale), int(6 * scale))
+                pygame.draw.rect(surface, (110, 70, 130), bg)
+            pixel_portrait.draw_bust(surface, stamp_rect, member.seed)
+            border_color = ui.ACCENT if is_active else ui.BORDER_OUTER
+            border_w = max(2, int(3 * scale)) if is_active else max(1, int(1 * scale))
+            pygame.draw.rect(surface, border_color, stamp_rect, width=border_w)
+            name_text = self._truncate_to_width(name_font, member.name, stamp_size + int(4 * scale))
+            label = name_font.render(name_text, True, ui.ACCENT if is_active else ui.TEXT_COLOR)
+            surface.blit(label, label.get_rect(midtop=(stamp_rect.centerx, stamp_rect.bottom + int(3 * scale))))
+
+    def _draw_prospect_row(self, surface, rect, scale):
+        """Stamp-size portraits for the active member's own prospects (met_by
+        == active) - scoped per-turn since prospects belong to whoever met
+        them, not the whole cule."""
+        caption_font = ui.font(13, scale, title=True)
+        name_font = ui.font(11, scale)
+        caption = caption_font.render(f"{self.active.name}'S PROSPECTS", True, ui.DIM_TEXT)
+        surface.blit(caption, (rect.left, rect.top))
+        row_y = rect.top + caption.get_height() + int(4 * scale)
+
+        prospects = list(self._member_prospects(self.active.name).items())
+        if not prospects:
+            empty_font = ui.font(12, scale)
+            empty = empty_font.render("No prospects yet", True, ui.DIM_TEXT)
+            surface.blit(empty, (rect.left, row_y))
+            return
+
+        n = len(prospects)
+        gap = int(8 * scale)
+        default_size = int(30 * scale)
+        stamp_size = int(min(default_size, max(int(18 * scale), (rect.width - gap * (n - 1)) / n)))
+        highlight = self._current_highlight()
+        bar_h = max(3, int(4 * scale))
+        for i, (pname, prospect) in enumerate(prospects):
+            x = rect.left + i * (stamp_size + gap)
+            stamp_rect = pygame.Rect(x, row_y, stamp_size, stamp_size)
             char = prospect["char"]
-            pixel_portrait.draw_bust(surface, pygame.Rect(int(pos[0] - node_r3), int(pos[1] - node_r3),
-                                                             node_r3 * 2, node_r3 * 2), char.seed)
-            small_font = ui.font(16, scale)
-            label = small_font.render(char.name, True, ui.DIM_TEXT)
-            surface.blit(label, label.get_rect(midtop=(pos[0], pos[1] + node_r3 + int(3 * scale))))
+            pixel_portrait.draw_bust(surface, stamp_rect, char.seed)
+            border_color = ui.ACCENT if pname == highlight else self._prospect_color(prospect["interest"] / 100.0)
+            pygame.draw.rect(surface, border_color, stamp_rect, width=max(1, int(2 * scale)))
+            bar_y = stamp_rect.bottom + int(2 * scale)
+            ui.draw_bar(surface, pygame.Rect(stamp_rect.left, bar_y, stamp_size, bar_h),
+                        prospect["interest"], 100, RELATIONAL_INFO["interest"]["color"], border_w=0)
+            name_text = self._truncate_to_width(name_font, char.name, stamp_size + int(4 * scale))
+            label = name_font.render(name_text, True, ui.DIM_TEXT)
+            surface.blit(label, label.get_rect(midtop=(stamp_rect.centerx, bar_y + bar_h + int(2 * scale))))
 
     def _stat_grid_height(self, scale, label_font):
         label_h = label_font.get_height()
@@ -1301,7 +1387,7 @@ class PolyculeSimulator(Game):
             surface.blit(hint, (rect.left + int(20 * scale), rect.bottom - int(34 * scale)))
             return
 
-        panel, diagram, center, min_r, max_r, _ = self._network_geometry()
+        panel, diagram, center, min_r, max_r, _, members_rect, prospects_rect = self._network_geometry()
         ui.draw_panel(surface, panel, scale, corner_style="diamond")
         y = panel.top + int(12 * scale)
         surface.blit(small_font.render(
@@ -1315,6 +1401,8 @@ class PolyculeSimulator(Game):
         ui.draw_bar(surface, pygame.Rect(panel.left + int(10 * scale), y, bar_w, int(12 * scale)), self.chaos, 100, (220, 120, 120))
         surface.blit(small_font.render("Chaos", True, ui.DIM_TEXT), (panel.left + int(10 * scale), y + int(14 * scale)))
 
+        self._draw_member_row(surface, members_rect, scale)
+        self._draw_prospect_row(surface, prospects_rect, scale)
         self._draw_network(surface, center, scale)
 
         title_h = title_font.get_height()
