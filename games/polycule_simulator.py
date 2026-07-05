@@ -142,6 +142,29 @@ START_MEMBERS = 2
 START_OTHERS = 4
 EXIT_BREAKUP_TIER = 2
 
+# Two orthogonal "how far along is this" axes. LIFE_STAGE tracks a member's
+# own tenure in the cule/town (independent of any one relationship);
+# REL_STAGE tracks a specific pair's history together (independent of how
+# long either of them has been around). Both are derived live from weeks
+# elapsed + the underlying trust/interest numbers rather than stored
+# separately, so there's no extra state to fall out of sync - stages are
+# just a human-readable read of stats that already exist.
+LIFE_STAGES = ["arriving", "settling", "rooted"]
+LIFE_STAGE_LABELS = {
+    "arriving": "new to town",
+    "settling": "settling in",
+    "rooted": "rooted in the scene",
+}
+LIFE_STAGE_WEEKS = {"arriving": 8, "settling": 24}  # rooted once past "settling"
+
+REL_STAGES = ["new", "building", "established", "anchor"]
+REL_STAGE_LABELS = {
+    "new": "new",
+    "building": "building something",
+    "established": "established",
+    "anchor": "anchor partners",
+}
+
 # Static fill-ins used to preview a card's blurb before it has a real target
 # (drawn-card and discard previews render every frame, so this must stay
 # rng-free rather than reusing self.rng like `_flavor` does).
@@ -187,7 +210,7 @@ END_WEEK = {"id": "end_week", "name": "End Week", "blurb": "Wrap up and pass it 
 
 
 class Character:
-    def __init__(self, rng, name=None, archetype=None):
+    def __init__(self, rng, name=None, archetype=None, joined_week=1):
         self.name = name or rng.choice(FIRST_NAMES)
         self.archetype = archetype or rng.choice(ARCHETYPES)
         self.kinks = rng.sample(KINK_POOL, 2)
@@ -196,6 +219,7 @@ class Character:
         self.statuses = {s: rng.randint(40, 80) for s in STATUSES}
         self.preferred_activity = rng.choice(ACTIVITIES)
         self.hand = []
+        self.joined_week = joined_week  # week they became a cule member; drives life stage
 
     def stat_value(self, key):
         return self.traits[key] if key in self.traits else self.statuses[key]
@@ -225,13 +249,14 @@ class PolyculeSimulator(Game):
         self.anim_t = 0.0
 
         names = self.rng.sample(FIRST_NAMES, START_MEMBERS + START_OTHERS)
-        self.members = [Character(self.rng, name=n) for n in names[:START_MEMBERS]]
+        self.members = [Character(self.rng, name=n, joined_week=1) for n in names[:START_MEMBERS]]
         self.relationships = {}
         for i in range(len(self.members)):
             for j in range(i + 1, len(self.members)):
                 a, b = self.members[i], self.members[j]
                 self.relationships[self._rel_key(a.name, b.name)] = {
                     "trust": self.rng.randint(35, 90), "spark": self.rng.randint(35, 90),
+                    "formed_week": 1,
                 }
 
         self.prospects = {}
@@ -287,39 +312,95 @@ class PolyculeSimulator(Game):
         return frozenset((name_a, name_b))
 
     def get_rel(self, name_a, name_b):
-        return self.relationships.setdefault(self._rel_key(name_a, name_b), {"trust": 50, "spark": 50})
+        return self.relationships.setdefault(
+            self._rel_key(name_a, name_b), {"trust": 50, "spark": 50, "formed_week": self.week})
+
+    def _life_stage(self, member):
+        """How long this member has been part of the cule/town - orthogonal
+        to any specific relationship they're in."""
+        weeks = self.week - getattr(member, "joined_week", 1)
+        if weeks < LIFE_STAGE_WEEKS["arriving"]:
+            return "arriving"
+        if weeks < LIFE_STAGE_WEEKS["settling"]:
+            return "settling"
+        return "rooted"
+
+    def _relationship_stage(self, rel):
+        """How far along one specific pair's history is. Time-gated but also
+        trust-gated, so a relationship that's stalled out or taken a bad hit
+        doesn't keep "aging" into a deeper stage just because weeks passed."""
+        weeks = self.week - rel.get("formed_week", 1)
+        trust = rel.get("trust", 50)
+        if weeks < 6 or trust < 35:
+            return "new"
+        if weeks < 16 or trust < 55:
+            return "building"
+        if weeks < 32 or trust < 75:
+            return "established"
+        return "anchor"
+
+    @staticmethod
+    def _stage_at_least(order, current, minimum):
+        return order.index(current) >= order.index(minimum)
 
     def _member_prospects(self, member_name):
         return {n: p for n, p in self.prospects.items() if p["met_by"] == member_name}
 
+    def _targets_for_card(self, card, member):
+        """Eligible target names for a card, applying scope/target_scope,
+        commit-interest gating, and this card's min_rel_stage/min_life_stage
+        (if any). Shared by _eligible_cards (just needs "is this nonempty?")
+        and _card_targets (needs the actual list) so the two never drift."""
+        min_life = card.get("min_life_stage")
+        if min_life and not self._stage_at_least(LIFE_STAGES, self._life_stage(member), min_life):
+            return []
+
+        min_rel = card.get("min_rel_stage")
+
+        def filter_rel_stage(names):
+            if not min_rel:
+                return names
+            return [n for n in names
+                    if self._stage_at_least(REL_STAGES, self._relationship_stage(self.get_rel(member.name, n)), min_rel)]
+
+        my_prospects = self._member_prospects(member.name)
+        others = [m.name for m in self.members if m.name != member.name]
+        cls = card["class"]
+        if cls == "dates":
+            if card.get("scope") != "pair":
+                return []
+            if card.get("target_scope") == "members_and_prospects":
+                return filter_rel_stage(others) + ([] if min_rel else list(my_prospects.keys()))
+            return filter_rel_stage(others)
+        if cls == "choice":
+            ts = card.get("target_scope", "members")
+            prospect_pool = my_prospects
+            if card.get("kind") == "commit":
+                prospect_pool = {n: p for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD}
+            if ts == "members_and_prospects":
+                return filter_rel_stage(others) + ([] if min_rel else list(prospect_pool.keys()))
+            if ts == "prospects":
+                return list(prospect_pool.keys())
+            return filter_rel_stage(others)
+        return []
+
     def _eligible_cards(self, member):
         pool = []
-        others = [m for m in self.members if m.name != member.name]
         my_prospects = self._member_prospects(member.name)
-        eligible_prospects = {n: p for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD}
         for card in member.deck():
             cls = card["class"]
             if cls == "dates" and card.get("scope") == "pair":
-                ts = card.get("target_scope", "members")
-                if ts == "members_and_prospects":
-                    if not others and not my_prospects:
-                        continue
-                elif not others:
+                if not self._targets_for_card(card, member):
                     continue
             elif cls == "choice":
-                ts = card.get("target_scope", "members")
-                pool_prospects = eligible_prospects if card.get("kind") == "commit" else my_prospects
-                if ts == "members_and_prospects":
-                    if not others and not pool_prospects:
-                        continue
-                elif ts == "prospects":
-                    if not pool_prospects:
-                        continue
-                elif not others:
+                if not self._targets_for_card(card, member):
                     continue
             elif cls == "events" and card.get("spawns_prospect"):
                 if len(my_prospects) >= MAX_PROSPECTS_PER_MEMBER:
                     continue
+            min_life = card.get("min_life_stage")
+            if min_life and not self._stage_at_least(LIFE_STAGES, self._life_stage(member), min_life):
+                continue
             pool.append(card)
         return pool
 
@@ -338,27 +419,7 @@ class PolyculeSimulator(Game):
         self.state = "draw"
 
     def _card_targets(self, card):
-        member = self.active
-        my_prospects = self._member_prospects(member.name)
-        others = [m.name for m in self.members if m.name != member.name]
-        cls = card["class"]
-        if cls == "dates":
-            if card.get("scope") != "pair":
-                return []
-            if card.get("target_scope") == "members_and_prospects":
-                return others + list(my_prospects.keys())
-            return others
-        if cls == "choice":
-            ts = card.get("target_scope", "members")
-            prospect_pool = my_prospects
-            if card.get("kind") == "commit":
-                prospect_pool = {n: p for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD}
-            if ts == "members_and_prospects":
-                return others + list(prospect_pool.keys())
-            if ts == "prospects":
-                return list(prospect_pool.keys())
-            return others
-        return []
+        return self._targets_for_card(card, self.active)
 
     def _target_info(self, name):
         """Returns (character, kind, stat) where kind is 'member' or 'prospect'
@@ -494,8 +555,11 @@ class PolyculeSimulator(Game):
         elif cls == "dates":
             tier = self._roll_tier()
             self.result_tier = tier
+            old_stage = self._relationship_stage(self.get_rel(member.name, target_name)) if target_name in {m.name for m in self.members} else None
             lines.append(OUTCOME_TIERS[tier])
             lines.extend(self._apply_stats(card, tier, target_name))
+            if old_stage:
+                lines.extend(self._stage_transition_note(member, target_name, old_stage))
             self.result_text = lines
 
         elif cls == "choice":
@@ -510,11 +574,15 @@ class PolyculeSimulator(Game):
                 trust_d = self._tier_value(*trust_lo_hi, tier)
                 spark_d = self._tier_value(*spark_lo_hi, tier)
                 new_member = prospect["char"]
+                new_member.joined_week = self.week
                 self.members.append(new_member)
                 self.get_rel(member.name, new_member.name).update({
                     "trust": max(0, min(100, prospect["interest"] + trust_d)),
                     "spark": max(0, min(100, prospect["interest"] + spark_d)),
                 })
+                for other in self.members:
+                    if other.name not in (member.name, new_member.name):
+                        self.get_rel(new_member.name, other.name)  # seeds formed_week for the rest of the cule too
                 if "desire" in card.get("stats", {}):
                     d = self._tier_value(*card["stats"]["desire"], tier)
                     member.statuses["desire"] = max(0, min(100, member.statuses["desire"] + d))
@@ -538,11 +606,22 @@ class PolyculeSimulator(Game):
             else:
                 # ask_to_change, share, message, or a commit card whose
                 # target is already a member (deepening, not converting).
+                old_stage = self._relationship_stage(self.get_rel(member.name, target_name)) if target_name in {m.name for m in self.members} else None
                 lines.append(OUTCOME_TIERS[tier])
                 lines.extend(self._apply_stats(card, tier, target_name))
+                if old_stage:
+                    lines.extend(self._stage_transition_note(member, target_name, old_stage))
                 self.result_text = lines
 
         self._spend_energy()
+
+    def _stage_transition_note(self, member, target_name, old_stage):
+        new_stage = self._relationship_stage(self.get_rel(member.name, target_name))
+        if new_stage == old_stage:
+            return []
+        order = REL_STAGES
+        verb = "deepens" if order.index(new_stage) > order.index(old_stage) else "takes a step back"
+        return [f"Something with {target_name} {verb} - this feels {REL_STAGE_LABELS[new_stage]} now."]
 
     def _negotiate_date(self, target_name, day):
         member = self.active
@@ -1056,7 +1135,8 @@ class PolyculeSimulator(Game):
             name_tag = f"{member.name} (active)" if member.name == self.active.name else member.name
             surface.blit(body_font.render(name_tag, True, ui.TEXT_COLOR), (tx, y))
             bar_w = rect.width - (tx - rect.left) - int(20 * scale)
-            surface.blit(body_font.render(member.archetype, True, ui.DIM_TEXT), (tx, y + line_h))
+            archetype_line = f"{member.archetype} - {LIFE_STAGE_LABELS[self._life_stage(member)]}"
+            surface.blit(body_font.render(archetype_line, True, ui.DIM_TEXT), (tx, y + line_h))
             bars_y = y + line_h * 2 + int(4 * scale)
             ui.draw_bar(surface, pygame.Rect(tx, bars_y, bar_w, rel_bar_h), avg_trust, 100, RELATIONAL_INFO["trust"]["color"])
             ui.draw_bar(surface, pygame.Rect(tx, bars_y + rel_bar_h + 2, bar_w, rel_bar_h), avg_spark, 100, RELATIONAL_INFO["spark"]["color"])
@@ -1094,7 +1174,9 @@ class PolyculeSimulator(Game):
 
         surface.blit(title_font.render(member.name, True, ui.ACCENT), (rect.left + pad, rect.top + pad))
         sub_y = rect.top + pad + int(40 * scale)
-        surface.blit(body_font.render(member.archetype, True, ui.TEXT_COLOR), (rect.left + pad, sub_y))
+        life_stage = LIFE_STAGE_LABELS[self._life_stage(member)]
+        surface.blit(body_font.render(f"{member.archetype} - {life_stage}", True, ui.TEXT_COLOR),
+                     (rect.left + pad, sub_y))
 
         content_top = sub_y + int(38 * scale)
         content_bottom = rect.bottom - int(50 * scale)
@@ -1145,7 +1227,8 @@ class PolyculeSimulator(Game):
             ry += small_font.get_height() + int(4 * scale)
             for other in others:
                 rel = self.get_rel(member.name, other.name)
-                line = f"{other.name}: Trust {rel['trust']}  Spark {rel['spark']}"
+                stage_label = REL_STAGE_LABELS[self._relationship_stage(rel)]
+                line = f"{other.name}: Trust {rel['trust']}  Spark {rel['spark']}  ({stage_label})"
                 surface.blit(small_font.render(line, True, ui.TEXT_COLOR), (right_rect.left, ry))
                 ry += small_font.get_height() + int(3 * scale)
             ry += int(10 * scale)

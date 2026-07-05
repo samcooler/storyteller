@@ -78,6 +78,7 @@
     "name": "Community Potluck",
     "class": "dates",
     "scope": "community",
+    "min_life_stage": "settling",
     "blurb": "Bring a dish to the wider community potluck.",
     "stats": {"harmony": [2, 14], "fulfillment": [4, 16]}
   },
@@ -110,6 +111,7 @@
     "name": "Scout A Build Site",
     "class": "dates",
     "scope": "group",
+    "min_life_stage": "settling",
     "blurb": "Scout a build site out in the woods with the crew.",
     "stats": {"harmony": [0, 14], "fulfillment": [4, 16]}
   },
@@ -118,6 +120,7 @@
     "name": "Crew Potluck At The Shop",
     "class": "dates",
     "scope": "group",
+    "min_life_stage": "settling",
     "blurb": "Bring something to the potluck at the shop.",
     "stats": {"harmony": [2, 14], "fulfillment": [4, 16]}
   },

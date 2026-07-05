@@ -33,6 +33,7 @@
     "class": "choice",
     "kind": "commit",
     "target_scope": "members",
+    "min_rel_stage": "established",
     "blurb": "Take the cohabitating leap with {target}.",
     "stats": {"trust": [-10, 22], "spark": [-10, 10], "desire": [5, 20]}
   },
@@ -42,6 +43,7 @@
     "class": "choice",
     "kind": "ask_to_change",
     "target_scope": "members",
+    "min_rel_stage": "building",
     "blurb": "Propose new terms for how this relationship works with {target}.",
     "stats": {"trust": [-10, 20], "desire": [0, 15]}
   },
@@ -60,6 +62,7 @@
     "class": "choice",
     "kind": "ask_to_change",
     "target_scope": "members",
+    "min_rel_stage": "building",
     "blurb": "Propose opening things up with {target}.",
     "stats": {"trust": [-20, 18], "spark": [-10, 14], "desire": [5, 22]}
   },
@@ -69,6 +72,7 @@
     "class": "choice",
     "kind": "ask_to_change",
     "target_scope": "members",
+    "min_rel_stage": "established",
     "blurb": "Ask {target} to rethink where you rank.",
     "stats": {"trust": [-22, 16], "desire": [0, 18]}
   },
@@ -132,6 +136,7 @@
     "class": "choice",
     "kind": "ask_to_change",
     "target_scope": "members",
+    "min_rel_stage": "building",
     "blurb": "Pitch co-leading the build with {target}.",
     "stats": {"trust": [-15, 20], "desire": [0, 18]}
   },
