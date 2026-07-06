@@ -4,7 +4,9 @@ import sys
 import pygame
 
 from games import GAMES
+from games import input as actions
 from games import ui
+from games.scene import GameScene, Push, Pop, Quit, Scene, SceneStack
 
 FPS = 60
 INTERNAL_SIZE = (1920, 1080)  # native 1080p render target, smooth-scaled to fit whatever display we're on
@@ -36,20 +38,29 @@ def fit_rect(display_size, internal_size):
     return pygame.Rect((dw - tw) // 2, (dh - th) // 2, tw, th)
 
 
-class Menu:
-    def __init__(self, screen, games):
-        self.screen = screen
+class MenuScene(Scene):
+    """The game picker - the bottom of the scene stack. Enter launches the
+    selected game (pushed as a GameScene), O opens the options modal, and Esc
+    quits the whole app (popping the last scene empties the stack)."""
+
+    def __init__(self, render_surface, games):
+        self.render_surface = render_surface
         self.games = games
         self.selected = 0
 
     def handle_event(self, event):
-        if event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_DOWN, pygame.K_s):
-                self.selected = (self.selected + 1) % len(self.games)
-            elif event.key in (pygame.K_UP, pygame.K_w):
-                self.selected = (self.selected - 1) % len(self.games)
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                return self.games[self.selected]
+        act = actions.of(event)
+        if act == actions.DOWN:
+            self.selected = (self.selected + 1) % len(self.games)
+        elif act == actions.UP:
+            self.selected = (self.selected - 1) % len(self.games)
+        elif act == actions.BACK:
+            return Quit()
+        elif act == actions.CONFIRM:
+            game = self.games[self.selected](self.render_surface)
+            return Push(GameScene(game))
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_o:
+            return Push(OptionsScene())
         return None
 
     def draw(self, surface):
@@ -79,24 +90,25 @@ class Menu:
         surface.blit(hint, hint.get_rect(center=(w // 2, h - int(25 * scale))))
 
 
-class OptionsMenu:
-    """Centered modal dialog for app-wide settings (currently just the color theme)."""
+class OptionsScene(Scene):
+    """Centered modal dialog for app-wide settings (currently just the color
+    theme). Non-opaque so the menu stays visible underneath it."""
+
+    opaque = False
 
     def __init__(self):
         self.selected = 0
         self.rows = ["theme"]
 
     def handle_event(self, event):
-        """Returns True when the dialog should close."""
-        if event.type != pygame.KEYDOWN:
-            return False
-        if event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_SPACE):
-            return True
-        if event.key in (pygame.K_LEFT, pygame.K_a):
+        act = actions.of(event)
+        if act in (actions.BACK, actions.CONFIRM):
+            return Pop()
+        if act == actions.LEFT:
             ui.cycle_theme(-1)
-        elif event.key in (pygame.K_RIGHT, pygame.K_d):
+        elif act == actions.RIGHT:
             ui.cycle_theme(1)
-        return False
+        return None
 
     def draw(self, surface):
         scale = ui.scale_factor(surface)
@@ -134,10 +146,7 @@ def main():
     dest_rect = fit_rect(screen.get_size(), INTERNAL_SIZE)
     render_scale = dest_rect.width / INTERNAL_SIZE[0]
 
-    menu = Menu(render_surface, GAMES)
-    options_menu = OptionsMenu()
-    showing_options = False
-    active_game = None
+    stack = SceneStack(MenuScene(render_surface, GAMES))
 
     running = True
     while running:
@@ -153,33 +162,15 @@ def main():
                 iy = (ey - dest_rect.top) / render_scale
                 event = pygame.event.Event(event.type, {**event.dict, "pos": (ix, iy)})
 
-            if showing_options:
-                if options_menu.handle_event(event):
-                    showing_options = False
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                if active_game is None:
-                    running = False
-                else:
-                    active_game = None
-            elif active_game is None:
-                if event.type == pygame.KEYDOWN and event.key == pygame.K_o:
-                    showing_options = True
-                else:
-                    chosen = menu.handle_event(event)
-                    if chosen is not None:
-                        active_game = chosen(render_surface)
-                        active_game.reset()
-            else:
-                active_game.handle_event(event)
+            stack.handle_event(event)
 
-        if active_game is None:
-            menu.draw(render_surface)
-        else:
-            active_game.update(dt)
-            active_game.draw(render_surface)
+        # A Quit command (or Esc at the root menu) empties the stack: exit.
+        if stack.quit or stack.empty:
+            running = False
+            break
 
-        if showing_options:
-            options_menu.draw(render_surface)
+        stack.update(dt)
+        stack.draw(render_surface)
 
         screen.fill((0, 0, 0))
         pygame.transform.smoothscale(render_surface, dest_rect.size, screen.subsurface(dest_rect))
