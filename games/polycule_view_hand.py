@@ -1,11 +1,15 @@
 """The bottom fanned hand row: full interactive fan while it's the active
-selector (playing/discarding), collapsed to a title strip otherwise."""
+selector (playing/discarding), collapsed to a title strip otherwise. Also
+draws the outgoing fade/shrink animation for a card that was just played or
+discarded (`draw_card_fx`) - see `PolyculeSimulator._remove_card`."""
 
 import pygame
 
-from . import ui
+from . import tween, ui
 from . import polycule_view_cards as cards
 from .polycule_constants import END_WEEK
+
+FX_DURATION = 0.35
 
 
 def hand_card_surface(sim, card, card_w, card_h, scale, selected):
@@ -48,26 +52,62 @@ def hand_row_reserved_height(sim, scale):
     return int(60 * scale)
 
 
-def draw_hand_row_collapsed(sim, surface, main_rect, scale, hand):
-    """Title-only strip shown while the hand isn't the active selector -
-    just enough to remind you what's in hand without eating the space a
-    full fanned row would reserve."""
+def _fan_slot(main_rect, scale, n, i, show_end_button):
+    """(cx, cy, angle, card_w, card_h) for hand-fan card index `i` out of
+    `n` - the position/rotation draw_hand_row lays a card at. Shared with
+    draw_card_fx so an outgoing card animates from exactly where it sat."""
+    card_w = int(150 * scale)
+    card_h = card_w + int(25 * scale)
+    margin = int(20 * scale)
+    button_h = int(46 * scale) if show_end_button else 0
+    button_gap = int(14 * scale) if show_end_button else 0
+    row_bottom = main_rect.bottom - margin - button_h - button_gap
+    row_base_y = row_bottom - card_h
+    max_spread = main_rect.width - int(40 * scale)
+    step = card_w if n == 1 else min(
+        card_w + int(14 * scale),
+        max(card_w * 0.34, (max_spread - card_w) / (n - 1)),
+    )
+    total_w = card_w + step * (n - 1)
+    start_x = main_rect.centerx - total_w / 2
+    arc = int(14 * scale)
+    max_rot = 6.0
+    t = (i - (n - 1) / 2) / max(1, (n - 1) / 2) if n > 1 else 0.0
+    cx = start_x + i * step + card_w / 2
+    cy = row_base_y + arc * (t ** 2) + card_h / 2
+    angle = -t * max_rot
+    return cx, cy, angle, card_w, card_h
+
+
+def _collapsed_slot(main_rect, scale, n, i):
+    """The rect the collapsed title-strip lays card index `i` out of `n` at -
+    shared with draw_card_fx for the same reason as `_fan_slot`."""
     margin = int(20 * scale)
     gap = int(8 * scale)
-    n = len(hand)
     card_h = int(30 * scale)
     available = main_rect.width - margin * 2 - gap * (n - 1)
     card_w = min(int(120 * scale), max(int(40 * scale), available // n))
     total_w = n * card_w + (n - 1) * gap
     start_x = main_rect.centerx - total_w // 2
     y = main_rect.bottom - margin - card_h
-    name_font = ui.font(min(13, max(9, card_w // 11)), scale)
+    return pygame.Rect(start_x + i * (card_w + gap), y, card_w, card_h)
+
+
+def _draw_collapsed_card(surface, rect, scale, card):
+    ui.draw_panel(surface, rect, scale, border_color=ui.BORDER_OUTER)
+    display_name, _ = cards.card_face(card)
+    name_font = ui.font(min(13, max(9, rect.width // 11)), scale)
+    ui.blit_wrapped(surface, name_font, display_name, ui.DIM_TEXT,
+                     rect.centerx, rect.centery - name_font.get_height() // 2, rect.width - int(8 * scale))
+
+
+def draw_hand_row_collapsed(sim, surface, main_rect, scale, hand):
+    """Title-only strip shown while the hand isn't the active selector -
+    just enough to remind you what's in hand without eating the space a
+    full fanned row would reserve."""
+    n = len(hand)
     for i, card in enumerate(hand):
-        rect = pygame.Rect(start_x + i * (card_w + gap), y, card_w, card_h)
-        ui.draw_panel(surface, rect, scale, border_color=ui.BORDER_OUTER)
-        display_name, _ = cards.card_face(card)
-        ui.blit_wrapped(surface, name_font, display_name, ui.DIM_TEXT,
-                         rect.centerx, rect.centery - name_font.get_height() // 2, card_w - int(8 * scale))
+        _draw_collapsed_card(surface, _collapsed_slot(main_rect, scale, n, i), scale, card)
 
 
 def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
@@ -80,36 +120,14 @@ def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
     if not hand and not show_end_button:
         return
 
-    card_w = int(150 * scale)
-    card_h = card_w + int(25 * scale)
-    shadow_off = (int(6 * scale), int(8 * scale))
-    margin = int(20 * scale)
-
-    button_h = int(46 * scale) if show_end_button else 0
-    button_gap = int(14 * scale) if show_end_button else 0
-    row_bottom = main_rect.bottom - margin - button_h - button_gap
-    row_base_y = row_bottom - card_h
-
     n = len(hand)
     if n:
-        max_spread = main_rect.width - int(40 * scale)
-        step = card_w if n == 1 else min(
-            card_w + int(14 * scale),
-            max(card_w * 0.34, (max_spread - card_w) / (n - 1)),
-        )
-        total_w = card_w + step * (n - 1)
-        start_x = main_rect.centerx - total_w / 2
-        arc = int(14 * scale)
-        max_rot = 6.0
+        shadow_off = (int(6 * scale), int(8 * scale))
         selected_i = sim.hand_index if sim.state in ("hand", "discard") and sim.hand_index < n else None
-
         draw_order = [i for i in range(n) if i != selected_i] + ([selected_i] if selected_i is not None else [])
         for i in draw_order:
             card = hand[i]
-            t = (i - (n - 1) / 2) / max(1, (n - 1) / 2) if n > 1 else 0.0
-            cx = start_x + i * step + card_w / 2
-            cy = row_base_y + arc * (t ** 2) + card_h / 2
-            angle = -t * max_rot
+            cx, cy, angle, card_w, card_h = _fan_slot(main_rect, scale, n, i, show_end_button)
             selected = i == selected_i
             if selected:
                 cy -= int(16 * scale)
@@ -124,6 +142,11 @@ def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
             surface.blit(rotated, rotated_rect)
 
     if show_end_button:
+        card_w = int(150 * scale)
+        card_h = card_w + int(25 * scale)
+        shadow_off = (int(6 * scale), int(8 * scale))
+        margin = int(20 * scale)
+        button_h = int(46 * scale)
         btn_w = int(150 * scale)
         btn_rect = pygame.Rect(main_rect.centerx - btn_w // 2, main_rect.bottom - margin - button_h,
                                 btn_w, button_h)
@@ -139,3 +162,38 @@ def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
         label_font = ui.font(18, scale)
         label = label_font.render(END_WEEK["name"], True, ui.TEXT_COLOR)
         surface.blit(label, label.get_rect(center=btn_rect.center))
+
+
+def draw_card_fx(sim, surface, main_rect, scale):
+    """Renders cards that were just played/discarded, fading/shrinking out
+    from wherever they last actually sat in the hand row (fanned or
+    collapsed - `PolyculeSimulator._remove_card` records which), instead of
+    just vanishing between frames. Purely cosmetic: the FSM/model state
+    change already happened when the card was removed from `sim.hand`."""
+    for fx in sim.card_fx:
+        progress = min(1.0, fx["elapsed"] / FX_DURATION)
+        alpha = round(255 * (1.0 - progress))
+        if alpha <= 0:
+            continue
+        eased = tween.ease_in(progress)
+        shrink = 1.0 - 0.35 * eased
+        amplitude = int(36 * scale)
+        rise = eased * (-amplitude if fx["kind"] != "discard" else amplitude)
+
+        if fx["fan"]:
+            show_end_button = fx["kind"] != "discard"
+            cx, cy, angle, card_w, card_h = _fan_slot(main_rect, scale, fx["n"], fx["index"], show_end_button)
+            card_surf = hand_card_surface(sim, fx["card"], card_w, card_h, scale, selected=False)
+            card_surf = pygame.transform.rotate(card_surf, angle)
+        else:
+            rect = _collapsed_slot(main_rect, scale, fx["n"], fx["index"])
+            cx, cy = rect.center
+            card_surf = pygame.Surface(rect.size, pygame.SRCALPHA)
+            _draw_collapsed_card(card_surf, pygame.Rect(0, 0, rect.width, rect.height), scale, fx["card"])
+
+        if shrink != 1.0:
+            new_size = (max(1, round(card_surf.get_width() * shrink)), max(1, round(card_surf.get_height() * shrink)))
+            card_surf = pygame.transform.smoothscale(card_surf, new_size)
+        card_surf.set_alpha(alpha)
+        rect = card_surf.get_rect(center=(cx, cy + rise))
+        surface.blit(card_surf, rect)

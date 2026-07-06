@@ -99,6 +99,26 @@ class PolyculeSimulator(Game):
         self.chosen_day = None
         self.date_is_prospect = False
 
+        self.card_fx = []
+
+    def _remove_card(self, card, kind):
+        """Removes `card` from the hand, recording an outgoing fade/shrink
+        animation (games/polycule_view_hand.py:draw_card_fx) at whatever
+        position it currently occupies - fan row (`kind` != "discard") or
+        collapsed strip - so it doesn't just vanish between frames. Every
+        card-removal call site (discard, an immediately-resolved play, a
+        played card that needed a target, a scheduled date going through)
+        goes through here instead of touching self.hand directly."""
+        self.card_fx.append({
+            "card": card,
+            "index": self.hand.index(card),
+            "n": len(self.hand),
+            "fan": hand.hand_row_selecting(self),
+            "elapsed": 0.0,
+            "kind": kind,
+        })
+        self.hand.remove(card)
+
     # --- Save / load -----------------------------------------------------
     # Only the model (the simulated world) is captured - loading a save
     # always resumes at the top of the active member's turn, same as reset,
@@ -217,7 +237,7 @@ class PolyculeSimulator(Game):
     def _finish_card_fizzle(self, message):
         self.result_text = [message]
         self.result_tier = None
-        self.hand.remove(self.pending_card)
+        self._remove_card(self.pending_card, "play")
         self.hand_index = 0
         rules.spend_energy(self.model)
         self.state = "result"
@@ -255,7 +275,7 @@ class PolyculeSimulator(Game):
                 f"(scheduled for week {self.date_target_week})",
             ]
             self.result_tier = None
-            self.hand.remove(self.pending_card)
+            self._remove_card(self.pending_card, "play")
             self.hand_index = 0
             rules.spend_energy(self.model)
             self.state = "result"
@@ -312,6 +332,11 @@ class PolyculeSimulator(Game):
 
     def update(self, dt):
         self.anim_t += dt
+
+        for fx in self.card_fx:
+            fx["elapsed"] += dt
+        self.card_fx = [fx for fx in self.card_fx if fx["elapsed"] < hand.FX_DURATION]
+
         _, diagram, center, min_r, max_r, scale, _, _ = network.network_geometry(self)
         active = self.active
         ring = [m for m in self.members if m.name != active.name]
@@ -511,3 +536,4 @@ class PolyculeSimulator(Game):
             # its own tiles; self.hand already includes them (added in _start_turn),
             # so showing the fanned hand here too would just duplicate the reveal.
             hand.draw_hand_row(self, surface, main_rect, scale, body_font, small_font)
+            hand.draw_card_fx(self, surface, main_rect, scale)

@@ -52,7 +52,7 @@ class DiscardState(State):
             sim.hand_index = (sim.hand_index + 1) % len(sim.hand)
         elif event.key in _CONFIRM:
             card = sim.hand[sim.hand_index]
-            sim.hand.remove(card)
+            sim._remove_card(card, "discard")
             sim.hand_index = 0
             if len(sim.hand) <= MAX_HAND:
                 sim.state = "hand"
@@ -78,7 +78,7 @@ class HandState(State):
                 if not targets:
                     sim.result_text = [f"{card['name']} has no one left to target. It fizzles."]
                     sim.result_tier = None
-                    sim.hand.remove(card)
+                    sim._remove_card(card, "play")
                     sim.hand_index = 0
                     sim.state = "result"
                 else:
@@ -90,7 +90,7 @@ class HandState(State):
                 outcome = rules.resolve(sim.model, card, None)
                 sim.result_text = outcome.lines
                 sim.result_tier = outcome.tier
-                sim.hand.remove(card)
+                sim._remove_card(card, "play")
                 sim.hand_index = 0
                 sim.state = "result"
 
@@ -115,7 +115,7 @@ class TargetState(State):
                 outcome = rules.resolve(sim.model, sim.pending_card, target)
                 sim.result_text = outcome.lines
                 sim.result_tier = outcome.tier
-                sim.hand.remove(sim.pending_card)
+                sim._remove_card(sim.pending_card, "play")
                 sim.hand_index = 0
                 sim.state = "result"
 
