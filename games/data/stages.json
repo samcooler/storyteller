@@ -1,0 +1,16 @@
+{
+  "life_stages": ["arriving", "settling", "rooted"],
+  "life_stage_labels": {
+    "arriving": "new to town",
+    "settling": "settling in",
+    "rooted": "rooted in the scene"
+  },
+  "life_stage_weeks": {"arriving": 8, "settling": 24},
+  "rel_stages": ["new", "building", "established", "anchor"],
+  "rel_stage_labels": {
+    "new": "new",
+    "building": "building something",
+    "established": "established",
+    "anchor": "anchor partners"
+  }
+}

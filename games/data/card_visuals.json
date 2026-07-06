@@ -1,0 +1,27 @@
+{
+  "kind_colors": {
+    "solo": [150, 220, 255],
+    "pair": [140, 180, 240],
+    "group": [180, 230, 120],
+    "community": [120, 220, 180],
+    "events": [255, 210, 110],
+    "commit": [200, 160, 255],
+    "breakup": [255, 90, 90],
+    "ask_to_change": [255, 180, 120],
+    "share": [255, 150, 190],
+    "message": [230, 120, 120],
+    "end": [180, 180, 180]
+  },
+  "outcome_tiers": [
+    "Total disaster.",
+    "That really did not land.",
+    "Rough going. It shows.",
+    "A little awkward, honestly.",
+    "Mixed bag, more miss than hit.",
+    "Mixed bag, more hit than miss.",
+    "That lands better than expected.",
+    "Genuinely good moment.",
+    "One for the highlight reel.",
+    "About as good as it gets."
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "traits": ["extraversion", "openness", "conscientiousness", "security", "empathy"],
+  "statuses": ["happiness", "fulfillment", "energy", "stress", "desire"],
+  "stat_info": {
+    "extraversion": {
+      "label": "Extraversion", "abbr": "EXT", "color": [255, 170, 90], "category": "trait",
+      "flavor": ["keeps to themself", "comfortable either way", "lights up every room"]
+    },
+    "openness": {
+      "label": "Openness", "abbr": "OPN", "color": [150, 210, 255], "category": "trait",
+      "flavor": ["set in their ways", "open to some new things", "always chasing something new"]
+    },
+    "conscientiousness": {
+      "label": "Conscientiousness", "abbr": "CON", "color": [180, 220, 140], "category": "trait",
+      "flavor": ["flies by the seat of their pants", "reasonably organized", "meticulously on top of everything"]
+    },
+    "security": {
+      "label": "Security", "abbr": "SEC", "color": [200, 170, 255], "category": "trait",
+      "flavor": ["easily rattled", "generally steady", "unshakeable"]
+    },
+    "empathy": {
+      "label": "Empathy", "abbr": "EMP", "color": [255, 150, 190], "category": "trait",
+      "flavor": ["not exactly attuned to others", "reads the room fine", "deeply tuned in to everyone around them"]
+    },
+    "happiness": {
+      "label": "Happiness", "abbr": "HAP", "color": [255, 210, 120], "category": "status",
+      "flavor": ["having a rough time lately", "doing okay", "genuinely thriving"]
+    },
+    "fulfillment": {
+      "label": "Fulfillment", "abbr": "FUL", "color": [140, 200, 200], "category": "status",
+      "flavor": ["feeling pretty unfulfilled", "getting some of what they need", "deeply fulfilled right now"]
+    },
+    "energy": {
+      "label": "Energy", "abbr": "NRG", "color": [150, 220, 255], "category": "status",
+      "flavor": ["running on empty", "holding steady", "full of energy"]
+    },
+    "stress": {
+      "label": "Stress", "abbr": "STR", "color": [220, 120, 120], "category": "status",
+      "flavor": ["totally relaxed", "a little tense", "stretched thin"]
+    },
+    "desire": {
+      "label": "Desire", "abbr": "DES", "color": [230, 140, 220], "category": "status",
+      "flavor": ["not feeling it lately", "simmering", "burning for it"]
+    }
+  },
+  "relational_info": {
+    "trust": {"label": "Trust", "color": [140, 180, 240]},
+    "spark": {"label": "Spark", "color": [240, 140, 190]},
+    "interest": {"label": "Interest", "color": [255, 150, 190]}
+  }
+}

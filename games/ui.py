@@ -9,53 +9,15 @@ from pathlib import Path
 
 import pygame
 
-THEMES = {
-    "dusk_rose": {
-        "label": "Dusk Rose",
-        "bg": (24, 16, 30),
-        "pastel_top": (58, 40, 74),
-        "pastel_bottom": (94, 58, 110),
-        "border_outer": (245, 225, 250),
-        "border_inner": (255, 190, 230),
-        "text": (255, 245, 250),
-        "dim_text": (200, 180, 205),
-        "accent": (255, 200, 235),
-    },
-    "midnight_azure": {
-        "label": "Midnight Azure",
-        "bg": (10, 14, 26),
-        "pastel_top": (20, 30, 60),
-        "pastel_bottom": (35, 55, 95),
-        "border_outer": (210, 225, 250),
-        "border_inner": (150, 190, 240),
-        "text": (235, 240, 255),
-        "dim_text": (160, 180, 210),
-        "accent": (255, 210, 110),
-    },
-    "ember": {
-        "label": "Ember",
-        "bg": (24, 12, 10),
-        "pastel_top": (70, 30, 20),
-        "pastel_bottom": (110, 50, 25),
-        "border_outer": (250, 215, 180),
-        "border_inner": (255, 160, 90),
-        "text": (255, 240, 220),
-        "dim_text": (210, 160, 130),
-        "accent": (255, 120, 90),
-    },
-    "verdant": {
-        "label": "Verdant",
-        "bg": (10, 18, 14),
-        "pastel_top": (25, 55, 35),
-        "pastel_bottom": (40, 85, 55),
-        "border_outer": (215, 240, 210),
-        "border_inner": (150, 220, 160),
-        "text": (235, 250, 235),
-        "dim_text": (165, 200, 175),
-        "accent": (180, 230, 120),
-    },
-}
-THEME_ORDER = ["dusk_rose", "midnight_azure", "ember", "verdant"]
+from . import content_loader
+
+def _tupled_colors(theme):
+    return {k: (tuple(v) if k != "label" else v) for k, v in theme.items()}
+
+
+_theme_data = content_loader.load_json("theme_palettes.json")
+THEMES = {name: _tupled_colors(theme) for name, theme in _theme_data["themes"].items()}
+THEME_ORDER = _theme_data["order"]
 
 _current_theme_name = None
 BG = PASTEL_TOP = PASTEL_BOTTOM = None
