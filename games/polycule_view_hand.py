@@ -1,6 +1,6 @@
 """The bottom fanned hand row: full interactive fan while it's the active
 selector (playing/discarding), tucked mostly out of view otherwise (same
-card look as the fan, just lowered so only the title peeks above the
+card look as the fan, just lowered so its info still peeks above the
 fold). Also draws the outgoing fade/shrink animation for a card that was
 just played or discarded (`draw_card_fx`) - see
 `PolyculeSimulator._remove_card`."""
@@ -8,32 +8,52 @@ just played or discarded (`draw_card_fx`) - see
 import pygame
 
 from . import tween, ui
+from . import polycule_rules as rules
 from . import polycule_view_cards as cards
 from .polycule_constants import END_WEEK
 
 FX_DURATION = 0.35
 
 # How much of a tucked (non-selecting) card's top stays visible above the
-# fold - enough to read its title, not its kind label near the bottom.
-TUCK_PEEK = 70
+# fold - tall enough to read its title, kind, and most of its blurb.
+TUCK_PEEK = 120
 
 
 def hand_card_surface(sim, card, card_w, card_h, scale, selected):
     """Renders one hand card onto its own per-pixel-alpha surface so it can
-    be rotated for the fan layout without leaving black corners."""
+    be rotated for the fan layout without leaving black corners. Packs in
+    as much of the card's info as fits - name, kind, wrapped blurb - same
+    idiom as the bigger draw/discard preview tiles (see
+    polycule_view_cards.py:draw_card_tiles), just narrower."""
     card_surf = pygame.Surface((card_w, card_h), pygame.SRCALPHA)
     rect = pygame.Rect(0, 0, card_w, card_h)
     top_color = (110, 70, 130) if selected else ui.PASTEL_TOP
     bottom_color = (150, 90, 160) if selected else ui.PASTEL_BOTTOM
     border = ui.ACCENT if selected else ui.BORDER_OUTER
     ui.draw_panel(card_surf, rect, scale, top_color=top_color, bottom_color=bottom_color, border_color=border)
-    display_name, _blurb = cards.card_face(card)
+    pad = int(8 * scale)
+    display_name, display_blurb = cards.card_face(card)
+
     name_font = ui.font(min(13, max(9, card_w // 13)), scale)
-    ui.blit_wrapped(card_surf, name_font, display_name, ui.TEXT_COLOR,
-                     rect.centerx, rect.top + int(10 * scale), card_w - int(12 * scale))
-    kind_font = ui.font(12, scale)
+    kind_font = ui.font(11, scale)
+    blurb_font = ui.font(10, scale)
+
+    y = rect.top + int(10 * scale)
+    name_lines = ui.wrap_text(name_font, display_name, card_w - pad * 2)
+    ui.blit_wrapped(card_surf, name_font, display_name, ui.TEXT_COLOR, rect.centerx, y, card_w - pad * 2)
+    y += len(name_lines) * int(name_font.get_height() * 1.15) + int(3 * scale)
+
     kind_label = kind_font.render(cards.card_label(card), True, ui.DIM_TEXT)
-    card_surf.blit(kind_label, kind_label.get_rect(midbottom=(rect.centerx, rect.bottom - int(8 * scale))))
+    card_surf.blit(kind_label, kind_label.get_rect(midtop=(rect.centerx, y)))
+    y += kind_label.get_height() + int(6 * scale)
+
+    blurb_text = display_blurb if display_blurb is not None else rules.preview_blurb(card)
+    for line in ui.wrap_text(blurb_font, blurb_text, card_w - pad * 2):
+        if y + blurb_font.get_height() > rect.bottom - pad:
+            break
+        label = blurb_font.render(line, True, ui.DIM_TEXT)
+        card_surf.blit(label, label.get_rect(midtop=(rect.centerx, y)))
+        y += blurb_font.get_height() + int(2 * scale)
     return card_surf
 
 

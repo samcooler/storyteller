@@ -14,7 +14,7 @@ def card_face(card):
     to you, so they stay a mystery in hand/draw/discard previews and only
     reveal their real name and blurb once actually played."""
     if card["class"] == "events":
-        return "???", "Something's about to happen."
+        return "Event", "Something's about to happen."
     return card["name"], None
 
 
