@@ -19,21 +19,13 @@ import pygame
 
 from .polycule_constants import END_WEEK, MAX_HAND
 from . import polycule_rules as rules
+from .fsm import State, states
 
 _LEFT = (pygame.K_LEFT, pygame.K_a)
 _RIGHT = (pygame.K_RIGHT, pygame.K_d)
 _PREV = (pygame.K_LEFT, pygame.K_a, pygame.K_UP, pygame.K_w)
 _NEXT = (pygame.K_RIGHT, pygame.K_d, pygame.K_DOWN, pygame.K_s)
 _CONFIRM = (pygame.K_RETURN, pygame.K_SPACE)
-
-
-class State:
-    """One node of the turn FSM. `key` matches the string the view keys off."""
-
-    key = None
-
-    def handle_key(self, sim, event):
-        """React to a KEYDOWN event: mutate `sim` and set `sim.state` to move on."""
 
 
 class DrawState(State):
@@ -167,8 +159,5 @@ class RecapState(State):
 
 
 # Singleton registry, keyed by the same strings self.state has always used.
-STATES = {
-    s.key: s
-    for s in (DrawState(), DiscardState(), HandState(), TargetState(),
-              SubChoiceState(), ResultState(), RecapState())
-}
+STATES = states(DrawState(), DiscardState(), HandState(), TargetState(),
+                SubChoiceState(), ResultState(), RecapState())
