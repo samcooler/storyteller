@@ -27,6 +27,7 @@ from pathlib import Path
 import pygame
 
 from . import save
+from . import tween
 from . import ui
 from . import polycule_rules as rules
 from . import polycule_save
@@ -314,7 +315,6 @@ class PolyculeSimulator(Game):
         _, diagram, center, min_r, max_r, scale, _, _ = network.network_geometry(self)
         active = self.active
         ring = [m for m in self.members if m.name != active.name]
-        rate = min(1.0, dt * 2.5)
 
         ring_angles = network.weighted_ring_angles(self, ring, active)
         ring_positions = {}
@@ -345,7 +345,7 @@ class PolyculeSimulator(Game):
         target_positions = {active.name: center, **ring_positions}
         for name, target in target_positions.items():
             cur = self.node_pos.get(name, target)
-            self.node_pos[name] = (cur[0] + (target[0] - cur[0]) * rate, cur[1] + (target[1] - cur[1]) * rate)
+            self.node_pos[name] = tween.approach_point(cur, target, dt)
 
         prospect_margin = int(6 * scale) + int(14 * scale)
         for pname, prospect in self.prospects.items():
@@ -359,7 +359,7 @@ class PolyculeSimulator(Game):
             target = (anchor[0] + radius * math.cos(angle), anchor[1] + radius * math.sin(angle))
             target = network.clamp_to_rect(target, diagram, prospect_margin)
             cur = self.node_pos.get(pname, target)
-            self.node_pos[pname] = (cur[0] + (target[0] - cur[0]) * rate, cur[1] + (target[1] - cur[1]) * rate)
+            self.node_pos[pname] = tween.approach_point(cur, target, dt)
 
     def draw(self, surface):
         surface.fill(ui.BG)
