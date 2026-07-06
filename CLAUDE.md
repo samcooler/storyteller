@@ -14,12 +14,19 @@ design - see below) they all still live flat in `games/`.
 - `games/scene.py` - scene stack (`Scene`, `Push`/`Pop`/`Quit`, `SceneStack`, `GameScene`).
 - `games/input.py` - semantic input layer (`UP`/`DOWN`/`LEFT`/`RIGHT`/`CONFIRM`/`CANCEL`/`BACK`).
 - `games/fsm.py` - generic turn/selection state-machine base (`State`, `states()`).
+- `games/theme.py` - `Theme`, a frozen dataclass of one palette's colors, built
+  from `games/data/theme_palettes.json`.
 - `games/ui.py` - "juicy 2D menu/HUD" rendering toolkit (panels, corners, bars,
-  gauges, fonts). Reusable, but currently commits to one visual style (gradient
-  panels + corner ornaments) via mutable module-level theme globals
-  (`ui.BG`, `ui.ACCENT`, ...) rather than a passed-in theme object - a second
-  game inherits this exact look rather than bringing its own, until that's
-  reworked.
+  gauges, fonts). Still commits to one visual style (gradient panels + corner
+  ornaments) via mutable module-level globals (`ui.BG`, `ui.ACCENT`, ...) that
+  `set_theme()` fills in from a `Theme` - every existing draw call reads those
+  globals unchanged. New code, especially anything doing real graphics work
+  (a second visual style, comparing themes side by side), should take a
+  `Theme` as an explicit argument via `ui.current_theme()` instead of the
+  globals - a `Theme` can vary per call; the globals are one process-wide
+  mutable value. Threading `Theme` through every existing draw function's
+  signature is a bigger, separate refactor, deferred until something actually
+  needs two live themes at once.
 - `games/card_loader.py` / a future `games/content_loader.py` - JSON-in,
   Python-constants-out loading pattern for data-driven content.
 
