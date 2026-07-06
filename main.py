@@ -83,8 +83,16 @@ class MenuScene(Scene):
 
         desc = self.games[self.selected].description
         if desc:
-            desc_label = hint_font.render(desc, True, ui.TEXT_COLOR)
-            surface.blit(desc_label, desc_label.get_rect(center=(w // 2, h - int(60 * scale))))
+            # Wrapped, not a single blit: a game's description (e.g. Polycule
+            # Simulator's, which lists every control including save/load) can
+            # run wider than the screen for an unwrapped line. Anchored by its
+            # bottom edge so it grows upward, away from the hint row below.
+            lines = ui.wrap_text(hint_font, desc, int(w * 0.8))
+            line_h = int(hint_font.get_height() * 1.15)
+            top_y = h - int(85 * scale) - len(lines) * line_h
+            for i, line in enumerate(lines):
+                label = hint_font.render(line, True, ui.TEXT_COLOR)
+                surface.blit(label, label.get_rect(midtop=(w // 2, top_y + i * line_h)))
 
         hint = hint_font.render("Arrows to choose, Enter to play, O for Options, Esc to quit", True, ui.DIM_TEXT)
         surface.blit(hint, hint.get_rect(center=(w // 2, h - int(25 * scale))))
@@ -142,7 +150,15 @@ def main():
     pygame.mouse.set_visible(False)
     clock = pygame.time.Clock()
 
-    render_surface = pygame.Surface(INTERNAL_SIZE).convert()
+    # convert_alpha(), not convert(): on some SDL/driver combinations, blitting
+    # a per-pixel-alpha surface (all antialiased text - see ui.GameFont) onto a
+    # plain .convert() surface silently drops alpha compositing and paints a
+    # solid opaque rect instead of the glyphs. convert_alpha() sidesteps that;
+    # the surface is always fully repainted every frame, so carrying an alpha
+    # channel through the final smoothscale onto the (opaque) real screen has
+    # no visible effect as long as every fill/draw stays fully opaque, which
+    # they all currently do.
+    render_surface = pygame.Surface(INTERNAL_SIZE).convert_alpha()
     dest_rect = fit_rect(screen.get_size(), INTERNAL_SIZE)
     render_scale = dest_rect.width / INTERNAL_SIZE[0]
 
