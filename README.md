@@ -27,7 +27,7 @@ the venv.
 - In a game: Esc returns to the menu.
 - Polycule Simulator: Left/Right to pick a card, Enter to play it (then
   Up/Down + Enter to choose a target if needed, Backspace to cancel), Tab for
-  the roster window, C for the calendar.
+  the roster window, C for the calendar, F5 to save, F9 to load.
 
 ## Character portraits
 
