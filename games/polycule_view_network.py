@@ -10,7 +10,7 @@ import math
 
 import pygame
 
-from . import ui
+from . import tween, ui
 
 
 def network_geometry(sim):
@@ -131,7 +131,7 @@ def clamp_to_rect(pos, rect, margin):
 
 
 def draw_glow(sim, surface, pos, base_r, scale):
-    pulse = int(6 * scale + 4 * scale * math.sin(sim.anim_t * 5))
+    pulse = int(6 * scale + 4 * scale * tween.oscillate(sim.anim_t, freq=5))
     pygame.draw.circle(surface, (255, 255, 255), pos, base_r + pulse, width=max(2, int(3 * scale)))
 
 
