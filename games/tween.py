@@ -29,3 +29,16 @@ def approach_point(current, target, dt, rate=2.5):
 def oscillate(t, freq=1.0, phase=0.0):
     """A -1..1 sine wave over elapsed time `t`, for pulses/glows/wobbles."""
     return math.sin(t * freq + phase)
+
+
+def ease_in(t):
+    """Quadratic ease-in: starts slow, accelerates. `t` in [0, 1] - for a
+    fixed-duration animation's progress fraction (elapsed / duration),
+    distinct from `approach`'s continuous per-frame smoothing toward a
+    moving target."""
+    return t * t
+
+
+def ease_out(t):
+    """Quadratic ease-out: starts fast, decelerates. `t` in [0, 1]."""
+    return 1 - (1 - t) * (1 - t)
