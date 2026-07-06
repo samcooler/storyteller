@@ -103,17 +103,19 @@ class PolyculeSimulator(Game):
 
     def _remove_card(self, card, kind):
         """Removes `card` from the hand, recording an outgoing fade/shrink
-        animation (games/polycule_view_hand.py:draw_card_fx) at whatever
-        position it currently occupies - fan row (`kind` != "discard") or
-        collapsed strip - so it doesn't just vanish between frames. Every
-        card-removal call site (discard, an immediately-resolved play, a
-        played card that needed a target, a scheduled date going through)
-        goes through here instead of touching self.hand directly."""
+        animation (games/polycule_view_hand.py:draw_card_fx) at the
+        position it occupied, so it doesn't just vanish between frames.
+        Every card-removal call site (discard, an immediately-resolved
+        play, a played card that needed a target, a scheduled date going
+        through) goes through here instead of touching self.hand directly.
+        `index` only seeds where the card gets reinserted into the row's
+        virtual layout while it fades - see hand.py:_virtual_order for why
+        the row (fan vs collapsed) is decided fresh each frame instead of
+        being frozen here, since a play can change which one is showing in
+        the same frame the card starts fading."""
         self.card_fx.append({
             "card": card,
             "index": self.hand.index(card),
-            "n": len(self.hand),
-            "fan": hand.hand_row_selecting(self),
             "elapsed": 0.0,
             "kind": kind,
         })
