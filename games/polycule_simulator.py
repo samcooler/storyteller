@@ -22,11 +22,14 @@ view modules stay terse.
 
 import math
 import random
+from pathlib import Path
 
 import pygame
 
+from . import save
 from . import ui
 from . import polycule_rules as rules
+from . import polycule_save
 from . import polycule_view_calendar as calendar_view
 from . import polycule_view_cards as cards
 from . import polycule_view_dossier as dossier
@@ -45,10 +48,13 @@ from .polycule_constants import (
 from .polycule_model import PolyculeModel
 from .polycule_states import STATES
 
+SAVE_PATH = Path(__file__).resolve().parent.parent / "saves" / "polycule.json"
+
 
 class PolyculeSimulator(Game):
     name = "Polycule Simulator"
-    description = "A card game about your polycule. Arrows + Enter to play, Tab roster, C calendar."
+    description = ("A card game about your polycule. Arrows + Enter to play, Tab roster, C calendar, "
+                    "F5 save, F9 load.")
 
     def __init__(self, screen):
         super().__init__(screen)
@@ -56,8 +62,14 @@ class PolyculeSimulator(Game):
     def reset(self):
         # The whole simulated world - members, prospects, relationships,
         # calendar, harmony/chaos - lives on the model, built fresh from an
-        # injected rng. Everything set below is view/controller state only.
+        # injected rng. Everything else is view/controller state only.
         self.model = PolyculeModel(random.Random())
+        self._reset_controller_state()
+        self._start_turn(self.model.active)
+
+    def _reset_controller_state(self):
+        """(Re)initialize everything that isn't the model itself - shared by
+        `reset` (fresh world) and `deserialize` (loaded world)."""
         self.anim_t = 0.0
 
         self.node_pos = {}
@@ -86,7 +98,27 @@ class PolyculeSimulator(Game):
         self.chosen_day = None
         self.date_is_prospect = False
 
+    # --- Save / load -----------------------------------------------------
+    # Only the model (the simulated world) is captured - loading a save
+    # always resumes at the top of the active member's turn, same as reset,
+    # just with the saved world instead of a freshly generated one. See
+    # polycule_save.py for why and what that leaves out.
+
+    def serialize(self):
+        return polycule_save.serialize_model(self.model)
+
+    def deserialize(self, data):
+        self.model = polycule_save.deserialize_model(data)
+        self._reset_controller_state()
         self._start_turn(self.model.active)
+
+    def _save_to_disk(self):
+        SAVE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        save.save_to_path(SAVE_PATH, self.serialize())
+
+    def _load_from_disk(self):
+        if SAVE_PATH.exists():
+            self.deserialize(save.load_from_path(SAVE_PATH))
 
     # --- Domain read-proxies -------------------------------------------------
     # Domain state and queries live on self.model; these keep the controller
@@ -242,6 +274,12 @@ class PolyculeSimulator(Game):
 
     def handle_event(self, event):
         if event.type != pygame.KEYDOWN:
+            return
+        if event.key == pygame.K_F5:
+            self._save_to_disk()
+            return
+        if event.key == pygame.K_F9:
+            self._load_from_disk()
             return
         if event.key == pygame.K_TAB:
             self.overlay = None if self.overlay == "roster" else "roster"
