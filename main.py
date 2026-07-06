@@ -125,7 +125,7 @@ class OptionsScene(Scene):
         surface.blit(title, title.get_rect(midtop=(dialog.centerx, dialog.top + int(18 * scale))))
 
         label = body_font.render("Theme", True, ui.TEXT_COLOR)
-        theme_label = ui.THEMES[ui.current_theme_name()]["label"]
+        theme_label = ui.current_theme().label
         value = body_font.render(f"< {theme_label} >", True, ui.ACCENT)
         row_y = dialog.top + int(90 * scale)
         surface.blit(label, label.get_rect(midleft=(dialog.left + int(30 * scale), row_y)))

@@ -10,46 +10,49 @@ from pathlib import Path
 import pygame
 
 from . import content_loader
-
-def _tupled_colors(theme):
-    return {k: (tuple(v) if k != "label" else v) for k, v in theme.items()}
-
+from .theme import Theme
 
 _theme_data = content_loader.load_json("theme_palettes.json")
-THEMES = {name: _tupled_colors(theme) for name, theme in _theme_data["themes"].items()}
+THEMES = {name: Theme.from_dict(name, data) for name, data in _theme_data["themes"].items()}
 THEME_ORDER = _theme_data["order"]
 
-_current_theme_name = None
+_active_theme = None
 BG = PASTEL_TOP = PASTEL_BOTTOM = None
 BORDER_OUTER = BORDER_INNER = None
 TEXT_COLOR = DIM_TEXT = ACCENT = None
 
 
 def set_theme(name):
-    """Swap the active color palette. Every consumer reads these as `ui.X`
-    attribute access (never `from games.ui import X`), so reassigning the
-    module globals here takes effect immediately everywhere."""
-    global _current_theme_name, BG, PASTEL_TOP, PASTEL_BOTTOM
+    """Swap the active color palette. Every existing consumer reads these as
+    `ui.X` attribute access (never `from games.ui import X`), so reassigning
+    the module globals here takes effect immediately everywhere. New code
+    that needs a theme should prefer `current_theme()` over these globals -
+    see theme.py for why."""
+    global _active_theme, BG, PASTEL_TOP, PASTEL_BOTTOM
     global BORDER_OUTER, BORDER_INNER, TEXT_COLOR, DIM_TEXT, ACCENT
     theme = THEMES[name]
-    _current_theme_name = name
-    BG = theme["bg"]
-    PASTEL_TOP = theme["pastel_top"]
-    PASTEL_BOTTOM = theme["pastel_bottom"]
-    BORDER_OUTER = theme["border_outer"]
-    BORDER_INNER = theme["border_inner"]
-    TEXT_COLOR = theme["text"]
-    DIM_TEXT = theme["dim_text"]
-    ACCENT = theme["accent"]
+    _active_theme = theme
+    BG = theme.bg
+    PASTEL_TOP = theme.pastel_top
+    PASTEL_BOTTOM = theme.pastel_bottom
+    BORDER_OUTER = theme.border_outer
+    BORDER_INNER = theme.border_inner
+    TEXT_COLOR = theme.text
+    DIM_TEXT = theme.dim_text
+    ACCENT = theme.accent
+
+
+def current_theme():
+    return _active_theme
 
 
 def current_theme_name():
-    return _current_theme_name
+    return _active_theme.name
 
 
 def cycle_theme(step=1):
     """Move to the next (or previous, step=-1) theme in THEME_ORDER and return its name."""
-    idx = THEME_ORDER.index(_current_theme_name)
+    idx = THEME_ORDER.index(_active_theme.name)
     name = THEME_ORDER[(idx + step) % len(THEME_ORDER)]
     set_theme(name)
     return name
