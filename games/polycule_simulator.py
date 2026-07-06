@@ -100,6 +100,7 @@ class PolyculeSimulator(Game):
         self.date_is_prospect = False
 
         self.card_fx = []
+        self.hand_tuck_progress = 0.0
 
     def _remove_card(self, card, kind):
         """Removes `card` from the hand, recording an outgoing fade/shrink
@@ -338,6 +339,9 @@ class PolyculeSimulator(Game):
         for fx in self.card_fx:
             fx["elapsed"] += dt
         self.card_fx = [fx for fx in self.card_fx if fx["elapsed"] < hand.FX_DURATION]
+
+        tuck_target = 0.0 if hand.hand_row_selecting(self) else 1.0
+        self.hand_tuck_progress = tween.approach(self.hand_tuck_progress, tuck_target, dt, rate=8)
 
         _, diagram, center, min_r, max_r, scale, _, _ = network.network_geometry(self)
         active = self.active

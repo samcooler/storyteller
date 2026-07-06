@@ -1,9 +1,10 @@
 """The bottom fanned hand row: full interactive fan while it's the active
-selector (playing/discarding), tucked mostly out of view otherwise (same
-card look as the fan, just lowered so its info still peeks above the
-fold). Also draws the outgoing fade/shrink animation for a card that was
-just played or discarded (`draw_card_fx`) - see
-`PolyculeSimulator._remove_card`."""
+selector (playing/discarding), tucked mostly out of view otherwise - same
+position/rotation as the fan, just shifted down and hard-cropped at
+main_rect's bottom border, so the row keeps its fanned-out look instead of
+turning into a flat strip of tiny tiles. Also draws the outgoing
+fade/shrink animation for a card that was just played or discarded
+(`draw_card_fx`) - see `PolyculeSimulator._remove_card`."""
 
 import pygame
 
@@ -14,9 +15,11 @@ from .polycule_constants import END_WEEK
 
 FX_DURATION = 0.35
 
-# How much of a tucked (non-selecting) card's top stays visible above the
-# fold - tall enough to read its title, kind, and most of its blurb.
-TUCK_PEEK = 120
+# How far below its normal fan position a fully-tucked card sits - a
+# straight pixel shift (before scale), not a different layout - the card
+# itself is unchanged; only its center moves down, and main_rect's bottom
+# edge crops the rest away.
+TUCK_SHIFT = 90
 
 
 def hand_card_surface(sim, card, card_w, card_h, scale, selected):
@@ -68,14 +71,14 @@ def hand_row_selecting(sim):
 
 def hand_row_reserved_height(sim, scale):
     """Vertical space to leave for the bottom hand row. Full-size while it's
-    an active selector; just the tucked peek height otherwise (or nearly
-    nothing during "draw", where the row isn't drawn at all), so other
-    stages get more room for their own content above."""
+    an active selector; just enough for the tucked row's visible sliver
+    otherwise (or nearly nothing during "draw", where the row isn't drawn
+    at all), so other stages get more room for their own content above."""
     if sim.state == "draw":
         return int(20 * scale)
     if hand_row_selecting(sim):
         return int(200 * scale)
-    return int(TUCK_PEEK * scale)
+    return int(110 * scale)
 
 
 def _virtual_order(sim):
@@ -131,32 +134,33 @@ def _fan_slot(main_rect, scale, n, i, show_end_button):
     return cx, cy, angle, card_w, card_h
 
 
-def _tucked_slot(main_rect, scale, n, i):
-    """Full hand-card size and shape, positioned low enough that only its
-    top (title) peeks above the fold - used for the non-selecting row, so
-    a card between plays keeps the same look it has in the fan instead of
-    shrinking down to a tiny title-only tile."""
-    card_w = int(150 * scale)
-    card_h = card_w + int(25 * scale)
-    step, start_x = _row_spread(main_rect, scale, n, card_w)
-    cx = start_x + i * step + card_w / 2
-    top_y = main_rect.bottom - int(TUCK_PEEK * scale)
-    cy = top_y + card_h / 2
-    return cx, cy, card_w, card_h
+def _tucked_slot(main_rect, scale, n, i, shift_px):
+    """Same position/rotation as the fan (see _fan_slot, no end-button
+    space reserved since there's no button in this row), shifted down by
+    `shift_px` - the crop happens by clipping the draw to main_rect, not by
+    a different, smaller card."""
+    cx, cy, angle, card_w, card_h = _fan_slot(main_rect, scale, n, i, show_end_button=False)
+    return cx, cy + shift_px, angle, card_w, card_h
 
 
 def draw_hand_row_collapsed(sim, surface, main_rect, scale):
     """The tucked-away row shown while the hand isn't the active selector -
-    same card look as the fan, just lowered so only the top peeks above
-    the fold, without eating the space a full fanned row would reserve."""
+    the same fanned position/rotation as the interactive row, shifted down
+    and cropped hard at main_rect's bottom border so it reads as tucked
+    behind the panel rather than a different, flattened layout."""
     order = _virtual_order(sim)
     n = len(order)
+    shift_px = TUCK_SHIFT * scale * sim.hand_tuck_progress
+    old_clip = surface.get_clip()
+    surface.set_clip(main_rect)
     for i, card in enumerate(order):
         if not _is_live(sim, card):
             continue  # this slot is a still-fading card; draw_card_fx renders it
-        cx, cy, card_w, card_h = _tucked_slot(main_rect, scale, n, i)
+        cx, cy, angle, card_w, card_h = _tucked_slot(main_rect, scale, n, i, shift_px)
         card_surf = hand_card_surface(sim, card, card_w, card_h, scale, selected=False)
-        surface.blit(card_surf, card_surf.get_rect(center=(cx, cy)))
+        rotated = pygame.transform.rotate(card_surf, angle)
+        surface.blit(rotated, rotated.get_rect(center=(cx, cy)))
+    surface.set_clip(old_clip)
 
 
 def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
@@ -231,6 +235,12 @@ def draw_card_fx(sim, surface, main_rect, scale):
     order = _virtual_order(sim)
     n = len(order)
     show_end_button = sim.state != "discard"
+    shift_px = TUCK_SHIFT * scale * sim.hand_tuck_progress
+
+    old_clip = None
+    if not fan:
+        old_clip = surface.get_clip()
+        surface.set_clip(main_rect)
 
     for fx in sim.card_fx:
         progress = min(1.0, fx["elapsed"] / FX_DURATION)
@@ -245,11 +255,10 @@ def draw_card_fx(sim, surface, main_rect, scale):
 
         if fan:
             cx, cy, angle, card_w, card_h = _fan_slot(main_rect, scale, n, index, show_end_button)
-            card_surf = hand_card_surface(sim, fx["card"], card_w, card_h, scale, selected=False)
-            card_surf = pygame.transform.rotate(card_surf, angle)
         else:
-            cx, cy, card_w, card_h = _tucked_slot(main_rect, scale, n, index)
-            card_surf = hand_card_surface(sim, fx["card"], card_w, card_h, scale, selected=False)
+            cx, cy, angle, card_w, card_h = _tucked_slot(main_rect, scale, n, index, shift_px)
+        card_surf = hand_card_surface(sim, fx["card"], card_w, card_h, scale, selected=False)
+        card_surf = pygame.transform.rotate(card_surf, angle)
 
         if shrink != 1.0:
             new_size = (max(1, round(card_surf.get_width() * shrink)), max(1, round(card_surf.get_height() * shrink)))
@@ -257,3 +266,6 @@ def draw_card_fx(sim, surface, main_rect, scale):
         card_surf.set_alpha(alpha)
         blit_rect = card_surf.get_rect(center=(cx, cy + rise))
         surface.blit(card_surf, blit_rect)
+
+    if not fan:
+        surface.set_clip(old_clip)
