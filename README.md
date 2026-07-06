@@ -21,6 +21,17 @@ Note: on macOS, pygame currently only has prebuilt wheels up through
 Python 3.12 — if your default `python3` is newer, use `python3.12` to make
 the venv.
 
+## Running the tests
+
+```
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/pytest
+```
+
+The model (`polycule_model.py`) and rules (`polycule_rules.py`) are plain
+Python with no pygame/display dependency by design, so `tests/` exercises
+them headlessly — no display driver or `SDL_VIDEODRIVER` workaround needed.
+
 ## Controls
 
 - Menu: Arrow keys to pick a game, Enter/Space to play, Esc to quit.
