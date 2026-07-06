@@ -1,7 +1,9 @@
 """The bottom fanned hand row: full interactive fan while it's the active
-selector (playing/discarding), collapsed to a title strip otherwise. Also
-draws the outgoing fade/shrink animation for a card that was just played or
-discarded (`draw_card_fx`) - see `PolyculeSimulator._remove_card`."""
+selector (playing/discarding), tucked mostly out of view otherwise (same
+card look as the fan, just lowered so only the title peeks above the
+fold). Also draws the outgoing fade/shrink animation for a card that was
+just played or discarded (`draw_card_fx`) - see
+`PolyculeSimulator._remove_card`."""
 
 import pygame
 
@@ -10,6 +12,10 @@ from . import polycule_view_cards as cards
 from .polycule_constants import END_WEEK
 
 FX_DURATION = 0.35
+
+# How much of a tucked (non-selecting) card's top stays visible above the
+# fold - enough to read its title, not its kind label near the bottom.
+TUCK_PEEK = 70
 
 
 def hand_card_surface(sim, card, card_w, card_h, scale, selected):
@@ -42,21 +48,21 @@ def hand_row_selecting(sim):
 
 def hand_row_reserved_height(sim, scale):
     """Vertical space to leave for the bottom hand row. Full-size while it's
-    an active selector; collapsed to a title strip otherwise (or nearly
+    an active selector; just the tucked peek height otherwise (or nearly
     nothing during "draw", where the row isn't drawn at all), so other
     stages get more room for their own content above."""
     if sim.state == "draw":
         return int(20 * scale)
     if hand_row_selecting(sim):
         return int(200 * scale)
-    return int(60 * scale)
+    return int(TUCK_PEEK * scale)
 
 
 def _virtual_order(sim):
     """The live hand, plus any still-fading fx cards (see `draw_card_fx`)
     reinserted at roughly their original position. A played/discarded card
     is already gone from `sim.hand` the instant it starts fading, but the
-    row it fades in (fan or collapsed - whichever is showing *this frame*,
+    row it fades in (fan or tucked - whichever is showing *this frame*,
     since a play can change which one that is mid-fade) must keep its slot
     reserved, or the remaining live cards immediately reflow into it and
     overlap the fading card."""
@@ -70,6 +76,20 @@ def _is_live(sim, card):
     return any(c is card for c in sim.hand)
 
 
+def _row_spread(main_rect, scale, n, card_w):
+    """Shared step/start_x math for laying `n` same-size cards across
+    `main_rect`'s width, overlapping (rather than shrinking) once they'd
+    otherwise run wider than the available spread."""
+    max_spread = main_rect.width - int(40 * scale)
+    step = card_w if n == 1 else min(
+        card_w + int(14 * scale),
+        max(card_w * 0.34, (max_spread - card_w) / (n - 1)),
+    )
+    total_w = card_w + step * (n - 1)
+    start_x = main_rect.centerx - total_w / 2
+    return step, start_x
+
+
 def _fan_slot(main_rect, scale, n, i, show_end_button):
     """(cx, cy, angle, card_w, card_h) for hand-fan card index `i` out of
     `n` - the position/rotation draw_hand_row lays a card at. Shared with
@@ -81,13 +101,7 @@ def _fan_slot(main_rect, scale, n, i, show_end_button):
     button_gap = int(14 * scale) if show_end_button else 0
     row_bottom = main_rect.bottom - margin - button_h - button_gap
     row_base_y = row_bottom - card_h
-    max_spread = main_rect.width - int(40 * scale)
-    step = card_w if n == 1 else min(
-        card_w + int(14 * scale),
-        max(card_w * 0.34, (max_spread - card_w) / (n - 1)),
-    )
-    total_w = card_w + step * (n - 1)
-    start_x = main_rect.centerx - total_w / 2
+    step, start_x = _row_spread(main_rect, scale, n, card_w)
     arc = int(14 * scale)
     max_rot = 6.0
     t = (i - (n - 1) / 2) / max(1, (n - 1) / 2) if n > 1 else 0.0
@@ -97,38 +111,32 @@ def _fan_slot(main_rect, scale, n, i, show_end_button):
     return cx, cy, angle, card_w, card_h
 
 
-def _collapsed_slot(main_rect, scale, n, i):
-    """The rect the collapsed title-strip lays card index `i` out of `n` at -
-    shared with draw_card_fx for the same reason as `_fan_slot`."""
-    margin = int(20 * scale)
-    gap = int(8 * scale)
-    card_h = int(30 * scale)
-    available = main_rect.width - margin * 2 - gap * (n - 1)
-    card_w = min(int(120 * scale), max(int(40 * scale), available // n))
-    total_w = n * card_w + (n - 1) * gap
-    start_x = main_rect.centerx - total_w // 2
-    y = main_rect.bottom - margin - card_h
-    return pygame.Rect(start_x + i * (card_w + gap), y, card_w, card_h)
-
-
-def _draw_collapsed_card(surface, rect, scale, card):
-    ui.draw_panel(surface, rect, scale, border_color=ui.BORDER_OUTER)
-    display_name, _ = cards.card_face(card)
-    name_font = ui.font(min(13, max(9, rect.width // 11)), scale)
-    ui.blit_wrapped(surface, name_font, display_name, ui.DIM_TEXT,
-                     rect.centerx, rect.centery - name_font.get_height() // 2, rect.width - int(8 * scale))
+def _tucked_slot(main_rect, scale, n, i):
+    """Full hand-card size and shape, positioned low enough that only its
+    top (title) peeks above the fold - used for the non-selecting row, so
+    a card between plays keeps the same look it has in the fan instead of
+    shrinking down to a tiny title-only tile."""
+    card_w = int(150 * scale)
+    card_h = card_w + int(25 * scale)
+    step, start_x = _row_spread(main_rect, scale, n, card_w)
+    cx = start_x + i * step + card_w / 2
+    top_y = main_rect.bottom - int(TUCK_PEEK * scale)
+    cy = top_y + card_h / 2
+    return cx, cy, card_w, card_h
 
 
 def draw_hand_row_collapsed(sim, surface, main_rect, scale):
-    """Title-only strip shown while the hand isn't the active selector -
-    just enough to remind you what's in hand without eating the space a
-    full fanned row would reserve."""
+    """The tucked-away row shown while the hand isn't the active selector -
+    same card look as the fan, just lowered so only the top peeks above
+    the fold, without eating the space a full fanned row would reserve."""
     order = _virtual_order(sim)
     n = len(order)
     for i, card in enumerate(order):
         if not _is_live(sim, card):
             continue  # this slot is a still-fading card; draw_card_fx renders it
-        _draw_collapsed_card(surface, _collapsed_slot(main_rect, scale, n, i), scale, card)
+        cx, cy, card_w, card_h = _tucked_slot(main_rect, scale, n, i)
+        card_surf = hand_card_surface(sim, card, card_w, card_h, scale, selected=False)
+        surface.blit(card_surf, card_surf.get_rect(center=(cx, cy)))
 
 
 def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
@@ -192,7 +200,7 @@ def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
 
 def draw_card_fx(sim, surface, main_rect, scale):
     """Renders cards that were just played/discarded, fading/shrinking out
-    from wherever they currently sit in the (fan or collapsed) hand row's
+    from wherever they currently sit in the (fan or tucked) hand row's
     virtual order - see `_virtual_order` for why that's not just the
     position they happened to occupy at removal time. Purely cosmetic: the
     FSM/model state change already happened when the card was removed from
@@ -220,10 +228,8 @@ def draw_card_fx(sim, surface, main_rect, scale):
             card_surf = hand_card_surface(sim, fx["card"], card_w, card_h, scale, selected=False)
             card_surf = pygame.transform.rotate(card_surf, angle)
         else:
-            rect = _collapsed_slot(main_rect, scale, n, index)
-            cx, cy = rect.center
-            card_surf = pygame.Surface(rect.size, pygame.SRCALPHA)
-            _draw_collapsed_card(card_surf, pygame.Rect(0, 0, rect.width, rect.height), scale, fx["card"])
+            cx, cy, card_w, card_h = _tucked_slot(main_rect, scale, n, index)
+            card_surf = hand_card_surface(sim, fx["card"], card_w, card_h, scale, selected=False)
 
         if shrink != 1.0:
             new_size = (max(1, round(card_surf.get_width() * shrink)), max(1, round(card_surf.get_height() * shrink)))
