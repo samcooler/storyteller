@@ -7,6 +7,13 @@ existing partners, met prospects, or the household as a whole, then passes
 control to the next member. Time is tracked as weeks inside quarters, and
 some cards (dates) get negotiated and scheduled onto a calendar instead of
 resolving immediately.
+
+This module is the game's controller + view: it owns input handling, the
+turn/selection state machine, and all the pygame drawing. The simulated
+world itself lives in `polycule_model.PolyculeModel`, and how a played card
+resolves lives in `polycule_rules`. Domain state is reached through the thin
+read-proxies just below `reset` (self.members -> self.model.members, etc.)
+so the drawing code stays terse.
 """
 
 import math
@@ -14,225 +21,31 @@ import random
 
 import pygame
 
-from . import card_loader, pixel_portrait, ui
+from . import pixel_portrait, ui
+from . import polycule_rules as rules
 from .base import Game
-
-FIRST_NAMES = [
-    "Jamie", "Steve", "Alex", "Riley", "Sam", "Jordan", "Casey", "Morgan",
-    "Skyler", "Devon", "Quinn", "Rowan", "Ash", "Bex", "Theo", "Nico",
-    "Frankie", "Wren", "Lior", "Sage",
-]
-
-ARCHETYPES = [
-    "astrology-pilled barista",
-    "crypto bro who found ethical non-monogamy on a podcast",
-    "theater kid who never left the theater",
-    "crunchy homesteader with three chickens named after exes",
-    "spreadsheet person who tracks feelings in a pivot table",
-    "yoga instructor who over-shares in savasana",
-    "DM who's still mad you missed session 4",
-    "vegan chef with strong opinions about cheese",
-    "rock climber who talks about 'sending' too much",
-    "furry with a very normal day job",
-    "raw milk enthusiast with a lot of opinions",
-    "person who met their metamour on a raid night",
-    "tarot reader who overcharges everyone including their partners",
-]
-
-VENUES = [
-    "the co-op", "a klezmer-punk show", "a polyamory meetup",
-    "the dog park", "a plant swap", "queer trivia night",
-    "a Discord voice channel at 2am",
-]
-
-KINK_POOL = [
-    ("hand-holding", 1), ("vanilla missionary", 1), ("dirty talk", 2),
-    ("light bondage", 2), ("roleplay", 2), ("praise kink", 2),
-    ("degradation", 3), ("impact play", 3), ("exhibitionism", 3),
-    ("primal play", 4), ("breath play", 5), ("blood play", 5),
-    ("knife play", 5),
-]
-
-HOBBIES = ["pottery", "D&D", "birdwatching", "rock climbing", "baking sourdough", "thrifting"]
-PROJECTS = ["a zine", "a mural", "a home video", "a diorama", "a podcast"]
-DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-ACTIVITIES = ["Park", "Movie", "Jog"]
-SCHEDULE_OFFSETS = [("This week", 0), ("Next week", 1), ("In two weeks", 2)]
-
-TRAITS = ["extraversion", "openness", "conscientiousness", "security", "empathy"]
-STATUSES = ["happiness", "fulfillment", "energy", "stress", "desire"]
-
-# Single source of truth for every character-owned stat (5 traits + 5
-# statuses). Every display tier (dossier, roster row, selector tile, ring)
-# reads from this table instead of hand-picking which stats it bothers to
-# show, so all ten stay visually equal citizens even though only a couple
-# are hooked into card resolution today.
-STAT_INFO = {
-    "extraversion": {
-        "label": "Extraversion", "abbr": "EXT", "color": (255, 170, 90), "category": "trait",
-        "flavor": ("keeps to themself", "comfortable either way", "lights up every room"),
-    },
-    "openness": {
-        "label": "Openness", "abbr": "OPN", "color": (150, 210, 255), "category": "trait",
-        "flavor": ("set in their ways", "open to some new things", "always chasing something new"),
-    },
-    "conscientiousness": {
-        "label": "Conscientiousness", "abbr": "CON", "color": (180, 220, 140), "category": "trait",
-        "flavor": ("flies by the seat of their pants", "reasonably organized", "meticulously on top of everything"),
-    },
-    "security": {
-        "label": "Security", "abbr": "SEC", "color": (200, 170, 255), "category": "trait",
-        "flavor": ("easily rattled", "generally steady", "unshakeable"),
-    },
-    "empathy": {
-        "label": "Empathy", "abbr": "EMP", "color": (255, 150, 190), "category": "trait",
-        "flavor": ("not exactly attuned to others", "reads the room fine", "deeply tuned in to everyone around them"),
-    },
-    "happiness": {
-        "label": "Happiness", "abbr": "HAP", "color": (255, 210, 120), "category": "status",
-        "flavor": ("having a rough time lately", "doing okay", "genuinely thriving"),
-    },
-    "fulfillment": {
-        "label": "Fulfillment", "abbr": "FUL", "color": (140, 200, 200), "category": "status",
-        "flavor": ("feeling pretty unfulfilled", "getting some of what they need", "deeply fulfilled right now"),
-    },
-    "energy": {
-        "label": "Energy", "abbr": "NRG", "color": (150, 220, 255), "category": "status",
-        "flavor": ("running on empty", "holding steady", "full of energy"),
-    },
-    "stress": {
-        "label": "Stress", "abbr": "STR", "color": (220, 120, 120), "category": "status",
-        "flavor": ("totally relaxed", "a little tense", "stretched thin"),
-    },
-    "desire": {
-        "label": "Desire", "abbr": "DES", "color": (230, 140, 220), "category": "status",
-        "flavor": ("not feeling it lately", "simmering", "burning for it"),
-    },
-}
-STAT_ORDER = TRAITS + STATUSES
-STAT_COLORS = [STAT_INFO[k]["color"] for k in STAT_ORDER]
-
-# Relational stats live per-pair (member/member or member/prospect), not on
-# a single Character, but share the same color/label idiom as STAT_INFO.
-RELATIONAL_INFO = {
-    "trust": {"label": "Trust", "color": (140, 180, 240)},
-    "spark": {"label": "Spark", "color": (240, 140, 190)},
-    "interest": {"label": "Interest", "color": (255, 150, 190)},
-}
-
-
-def stat_flavor(key, value):
-    """Threshold-based prose fragment for a stat value, for dossier-level text."""
-    low, mid, high = STAT_INFO[key]["flavor"]
-    if value < 34:
-        return low
-    if value < 67:
-        return mid
-    return high
-
-
-COMMIT_THRESHOLD = 70
-MAX_PROSPECTS_PER_MEMBER = 3
-DRAW_MAX = 3
-MAX_HAND = 5
-TURN_STEPS = ["Draw", "Discard", "Play"]
-WEEKS_PER_QUARTER = 12
-ENERGY_COST = 15
-START_MEMBERS = 2
-START_OTHERS = 4
-EXIT_BREAKUP_TIER = 2
-
-# Two orthogonal "how far along is this" axes. LIFE_STAGE tracks a member's
-# own tenure in the cule/town (independent of any one relationship);
-# REL_STAGE tracks a specific pair's history together (independent of how
-# long either of them has been around). Both are derived live from weeks
-# elapsed + the underlying trust/interest numbers rather than stored
-# separately, so there's no extra state to fall out of sync - stages are
-# just a human-readable read of stats that already exist.
-LIFE_STAGES = ["arriving", "settling", "rooted"]
-LIFE_STAGE_LABELS = {
-    "arriving": "new to town",
-    "settling": "settling in",
-    "rooted": "rooted in the scene",
-}
-LIFE_STAGE_WEEKS = {"arriving": 8, "settling": 24}  # rooted once past "settling"
-
-REL_STAGES = ["new", "building", "established", "anchor"]
-REL_STAGE_LABELS = {
-    "new": "new",
-    "building": "building something",
-    "established": "established",
-    "anchor": "anchor partners",
-}
-
-# Static fill-ins used to preview a card's blurb before it has a real target
-# (drawn-card and discard previews render every frame, so this must stay
-# rng-free rather than reusing self.rng like `_flavor` does).
-PREVIEW_PLACEHOLDERS = {"target": "someone", "hobby": "a hobby", "project": "a project", "venue": "a spot"}
-
-# Quick visual kind-coding shared by the drawn-card and discard previews.
-# Keyed by the label _card_label() returns: Dates scopes, Choice sub-kinds,
-# the "events" class, and the "end" sentinel.
-KIND_COLORS = {
-    "solo": (150, 220, 255),
-    "pair": (140, 180, 240),
-    "group": (180, 230, 120),
-    "community": (120, 220, 180),
-    "events": (255, 210, 110),
-    "commit": (200, 160, 255),
-    "breakup": (255, 90, 90),
-    "ask_to_change": (255, 180, 120),
-    "share": (255, 150, 190),
-    "message": (230, 120, 120),
-    "end": (180, 180, 180),
-}
-
-# Every action card resolves against this ladder: one outcome tier is rolled
-# per play, and the same tier drives every stat delta the card defines, so a
-# single roll reads as one coherent outcome instead of independent stats.
-OUTCOME_TIERS = [
-    "Total disaster.",
-    "That really did not land.",
-    "Rough going. It shows.",
-    "A little awkward, honestly.",
-    "Mixed bag, more miss than hit.",
-    "Mixed bag, more hit than miss.",
-    "That lands better than expected.",
-    "Genuinely good moment.",
-    "One for the highlight reel.",
-    "About as good as it gets.",
-]
-
-GENERIC_CARDS = card_loader.load_generic_cards()
-ARCHETYPE_CARDS = card_loader.load_archetype_cards()
-
-END_WEEK = {"id": "end_week", "name": "End Week", "blurb": "Wrap up and pass it on."}
-
-
-class Character:
-    def __init__(self, rng, name=None, archetype=None, joined_week=1):
-        self.name = name or rng.choice(FIRST_NAMES)
-        self.archetype = archetype or rng.choice(ARCHETYPES)
-        self.kinks = rng.sample(KINK_POOL, 2)
-        self.seed = rng.randint(0, 1 << 30)
-        self.traits = {t: rng.randint(20, 90) for t in TRAITS}
-        self.statuses = {s: rng.randint(40, 80) for s in STATUSES}
-        self.preferred_activity = rng.choice(ACTIVITIES)
-        self.hand = []
-        self.joined_week = joined_week  # week they became a cule member; drives life stage
-
-    def stat_value(self, key):
-        return self.traits[key] if key in self.traits else self.statuses[key]
-
-    def stat_values(self, order=STAT_ORDER):
-        return [self.stat_value(k) for k in order]
-
-    def deck(self):
-        deck = list(GENERIC_CARDS)
-        extra = ARCHETYPE_CARDS.get(self.archetype)
-        if extra:
-            deck = deck + list(extra)
-        return deck
+from .polycule_constants import (
+    ACTIVITIES,
+    DAYS,
+    DRAW_MAX,
+    END_WEEK,
+    KIND_COLORS,
+    LIFE_STAGE_LABELS,
+    MAX_HAND,
+    OUTCOME_TIERS,
+    RELATIONAL_INFO,
+    REL_STAGE_LABELS,
+    SCHEDULE_OFFSETS,
+    STAT_COLORS,
+    STAT_INFO,
+    STAT_ORDER,
+    STATUSES,
+    TRAITS,
+    TURN_STEPS,
+    WEEKS_PER_QUARTER,
+    stat_flavor,
+)
+from .polycule_model import PolyculeModel
 
 
 class PolyculeSimulator(Game):
@@ -241,33 +54,14 @@ class PolyculeSimulator(Game):
 
     def __init__(self, screen):
         super().__init__(screen)
-        self.rng = random.Random()
 
     def reset(self):
-        self.rng = random.Random()
-        self.week = 1
+        # The whole simulated world - members, prospects, relationships,
+        # calendar, harmony/chaos - lives on the model, built fresh from an
+        # injected rng. Everything set below is view/controller state only.
+        self.model = PolyculeModel(random.Random())
         self.anim_t = 0.0
 
-        names = self.rng.sample(FIRST_NAMES, START_MEMBERS + START_OTHERS)
-        self.members = [Character(self.rng, name=n, joined_week=1) for n in names[:START_MEMBERS]]
-        self.relationships = {}
-        for i in range(len(self.members)):
-            for j in range(i + 1, len(self.members)):
-                a, b = self.members[i], self.members[j]
-                self.relationships[self._rel_key(a.name, b.name)] = {
-                    "trust": self.rng.randint(35, 90), "spark": self.rng.randint(35, 90),
-                    "formed_week": 1,
-                }
-
-        self.prospects = {}
-        for n in names[START_MEMBERS:]:
-            c = Character(self.rng, name=n)
-            met_by = self.rng.choice(self.members).name
-            self.prospects[c.name] = {"char": c, "interest": self.rng.randint(20, 60), "met_by": met_by}
-
-        self.harmony = self.rng.randint(50, 80)
-        self.chaos = self.rng.randint(10, 40)
-        self.calendar = {}
         self.node_pos = {}
         self.overlay = None
         self.roster_scroll = 0
@@ -294,115 +88,73 @@ class PolyculeSimulator(Game):
         self.chosen_day = None
         self.date_is_prospect = False
 
-        self._start_turn(self.active)
+        self._start_turn(self.model.active)
+
+    # --- Domain read-proxies -------------------------------------------------
+    # Domain state and queries live on self.model; these keep the controller
+    # and the ~800 lines of drawing code terse (self.members, self.get_rel,
+    # ...) without each having to reach through self.model. Reads only -
+    # mutation goes through the model or the rules module.
+
+    @property
+    def members(self):
+        return self.model.members
+
+    @property
+    def prospects(self):
+        return self.model.prospects
+
+    @property
+    def relationships(self):
+        return self.model.relationships
+
+    @property
+    def calendar(self):
+        return self.model.calendar
+
+    @property
+    def week(self):
+        return self.model.week
+
+    @property
+    def harmony(self):
+        return self.model.harmony
+
+    @property
+    def chaos(self):
+        return self.model.chaos
 
     @property
     def active(self):
-        return self.members[(self.week - 1) % len(self.members)]
+        return self.model.active
 
     @property
     def quarter(self):
-        return (self.week - 1) // WEEKS_PER_QUARTER + 1
+        return self.model.quarter
 
     @property
     def week_in_quarter(self):
-        return (self.week - 1) % WEEKS_PER_QUARTER + 1
-
-    def _rel_key(self, name_a, name_b):
-        return frozenset((name_a, name_b))
+        return self.model.week_in_quarter
 
     def get_rel(self, name_a, name_b):
-        return self.relationships.setdefault(
-            self._rel_key(name_a, name_b), {"trust": 50, "spark": 50, "formed_week": self.week})
+        return self.model.get_rel(name_a, name_b)
 
     def _life_stage(self, member):
-        """How long this member has been part of the cule/town - orthogonal
-        to any specific relationship they're in."""
-        weeks = self.week - getattr(member, "joined_week", 1)
-        if weeks < LIFE_STAGE_WEEKS["arriving"]:
-            return "arriving"
-        if weeks < LIFE_STAGE_WEEKS["settling"]:
-            return "settling"
-        return "rooted"
+        return self.model.life_stage(member)
 
     def _relationship_stage(self, rel):
-        """How far along one specific pair's history is. Time-gated but also
-        trust-gated, so a relationship that's stalled out or taken a bad hit
-        doesn't keep "aging" into a deeper stage just because weeks passed."""
-        weeks = self.week - rel.get("formed_week", 1)
-        trust = rel.get("trust", 50)
-        if weeks < 6 or trust < 35:
-            return "new"
-        if weeks < 16 or trust < 55:
-            return "building"
-        if weeks < 32 or trust < 75:
-            return "established"
-        return "anchor"
-
-    @staticmethod
-    def _stage_at_least(order, current, minimum):
-        return order.index(current) >= order.index(minimum)
+        return self.model.relationship_stage(rel)
 
     def _member_prospects(self, member_name):
-        return {n: p for n, p in self.prospects.items() if p["met_by"] == member_name}
+        return self.model.member_prospects(member_name)
 
     def _targets_for_card(self, card, member):
-        """Eligible target names for a card, applying scope/target_scope,
-        commit-interest gating, and this card's min_rel_stage/min_life_stage
-        (if any). Shared by _eligible_cards (just needs "is this nonempty?")
-        and _card_targets (needs the actual list) so the two never drift."""
-        min_life = card.get("min_life_stage")
-        if min_life and not self._stage_at_least(LIFE_STAGES, self._life_stage(member), min_life):
-            return []
-
-        min_rel = card.get("min_rel_stage")
-
-        def filter_rel_stage(names):
-            if not min_rel:
-                return names
-            return [n for n in names
-                    if self._stage_at_least(REL_STAGES, self._relationship_stage(self.get_rel(member.name, n)), min_rel)]
-
-        my_prospects = self._member_prospects(member.name)
-        others = [m.name for m in self.members if m.name != member.name]
-        cls = card["class"]
-        if cls == "dates":
-            if card.get("scope") != "pair":
-                return []
-            if card.get("target_scope") == "members_and_prospects":
-                return filter_rel_stage(others) + ([] if min_rel else list(my_prospects.keys()))
-            return filter_rel_stage(others)
-        if cls == "choice":
-            ts = card.get("target_scope", "members")
-            prospect_pool = my_prospects
-            if card.get("kind") == "commit":
-                prospect_pool = {n: p for n, p in my_prospects.items() if p["interest"] >= COMMIT_THRESHOLD}
-            if ts == "members_and_prospects":
-                return filter_rel_stage(others) + ([] if min_rel else list(prospect_pool.keys()))
-            if ts == "prospects":
-                return list(prospect_pool.keys())
-            return filter_rel_stage(others)
-        return []
+        return self.model.targets_for_card(card, member)
 
     def _eligible_cards(self, member):
-        pool = []
-        my_prospects = self._member_prospects(member.name)
-        for card in member.deck():
-            cls = card["class"]
-            if cls == "dates" and card.get("scope") == "pair":
-                if not self._targets_for_card(card, member):
-                    continue
-            elif cls == "choice":
-                if not self._targets_for_card(card, member):
-                    continue
-            elif cls == "events" and card.get("spawns_prospect"):
-                if len(my_prospects) >= MAX_PROSPECTS_PER_MEMBER:
-                    continue
-            min_life = card.get("min_life_stage")
-            if min_life and not self._stage_at_least(LIFE_STAGES, self._life_stage(member), min_life):
-                continue
-            pool.append(card)
-        return pool
+        return self.model.eligible_cards(member)
+
+    # --- Turn / selection flow ----------------------------------------------
 
     def _start_turn(self, member):
         # Always draw up to DRAW_MAX regardless of current hand size - the
@@ -411,7 +163,7 @@ class PolyculeSimulator(Game):
         pool = self._eligible_cards(member)
         available = [c for c in pool if not any(c is h for h in member.hand)]
         n = max(0, min(DRAW_MAX, len(available)))
-        drawn = self.rng.sample(available, n) if n else []
+        drawn = self.model.rng.sample(available, n) if n else []
         member.hand.extend(drawn)
         self.hand = member.hand
         self.drawn_cards = drawn
@@ -419,7 +171,7 @@ class PolyculeSimulator(Game):
         self.state = "draw"
 
     def _card_targets(self, card):
-        return self._targets_for_card(card, self.active)
+        return self.model.targets_for_card(card, self.model.active)
 
     def _target_info(self, name):
         """Returns (character, kind, stat) where kind is 'member' or 'prospect'
@@ -433,42 +185,6 @@ class PolyculeSimulator(Game):
             return prospect["char"], "prospect", prospect["interest"]
         return None, None, None
 
-    def _roll(self, lo, hi):
-        return self.rng.randint(lo, hi)
-
-    def _roll_tier(self):
-        return self.rng.randrange(len(OUTCOME_TIERS))
-
-    def _tier_value(self, lo, hi, tier):
-        frac = tier / (len(OUTCOME_TIERS) - 1)
-        return round(lo + frac * (hi - lo))
-
-    def _unique_name(self):
-        existing = set(self.prospects) | {m.name for m in self.members}
-        candidates = [n for n in FIRST_NAMES if n not in existing]
-        if candidates:
-            return self.rng.choice(candidates)
-        suffixes = ["Jr.", "II", "the Younger", "from the group chat", "with the other haircut"]
-        for _ in range(20):
-            name = f"{self.rng.choice(FIRST_NAMES)} {self.rng.choice(suffixes)}"
-            if name not in existing:
-                return name
-        return f"{self.rng.choice(FIRST_NAMES)} #{self.rng.randint(100, 999)}"
-
-    def _flavor(self, card, target_name=None):
-        kwargs = {
-            "target": target_name or "",
-            "hobby": self.rng.choice(HOBBIES),
-            "project": self.rng.choice(PROJECTS),
-            "venue": self.rng.choice(VENUES),
-        }
-        return card["blurb"].format(**kwargs)
-
-    def _preview_blurb(self, card):
-        """Rng-free blurb rendering for cards that don't have a real target yet,
-        safe to call every frame (draw/discard previews)."""
-        return card["blurb"].format(**PREVIEW_PLACEHOLDERS)
-
     @staticmethod
     def _card_face(card):
         """(display name, display blurb) - Events are random things that happen
@@ -477,10 +193,6 @@ class PolyculeSimulator(Game):
         if card["class"] == "events":
             return "???", "Something's about to happen."
         return card["name"], None
-
-    def _spend_energy(self):
-        active = self.active
-        active.statuses["energy"] = max(0, active.statuses["energy"] - ENERGY_COST)
 
     @staticmethod
     def _card_label(card):
@@ -491,152 +203,6 @@ class PolyculeSimulator(Game):
         if card["class"] == "choice":
             return card.get("kind", "choice")
         return card["class"]
-
-    def _apply_stats(self, card, tier, target_name, skip_relational=False):
-        """Applies every stat in card['stats'], tier-scaled, routing each key
-        by name: trust/spark to the active-target relationship, interest to a
-        prospect, harmony/chaos to the cule, everything else (happiness,
-        fulfillment, energy, stress, desire) to the active member's own
-        statuses. Returns a list of description lines."""
-        member = self.active
-        notes = []
-        for key, (lo, hi) in card.get("stats", {}).items():
-            delta = self._tier_value(lo, hi, tier)
-            if key in ("trust", "spark"):
-                if skip_relational or target_name is None:
-                    continue
-                rel = self.get_rel(member.name, target_name)
-                rel[key] = max(0, min(100, rel[key] + delta))
-                notes.append(f"{key.capitalize()} {delta:+d}")
-            elif key == "interest":
-                if skip_relational or target_name is None:
-                    continue
-                prospect = self.prospects.get(target_name)
-                if prospect is None:
-                    continue
-                prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
-                notes.append(f"Interest {delta:+d}")
-                if prospect["interest"] <= 0:
-                    del self.prospects[target_name]
-                    notes.append(f"{target_name} stops responding entirely")
-            elif key in ("harmony", "chaos"):
-                setattr(self, key, max(0, min(100, getattr(self, key) + delta)))
-                notes.append(f"{key.capitalize()} {delta:+d}")
-            else:
-                member.statuses[key] = max(0, min(100, member.statuses[key] + delta))
-                notes.append(f"{STAT_INFO[key]['label']} {delta:+d}")
-        return [", ".join(notes) + "."] if notes else []
-
-    def _spawn_prospect(self, member):
-        venue = self.rng.choice(VENUES)
-        name = self._unique_name()
-        stranger = Character(self.rng, name=name)
-        interest = self._roll(10, 30)
-        self.prospects[stranger.name] = {"char": stranger, "interest": interest, "met_by": member.name}
-        return [f"{member.name} meets {stranger.name} at {venue}.",
-                f"({stranger.archetype}, +{interest} interest)"]
-
-    def _resolve(self, card, target_name):
-        member = self.active
-        flavor = self._flavor(card, target_name)
-        cls = card["class"]
-        lines = [flavor]
-        self.result_tier = None
-
-        if cls == "events":
-            tier = self._roll_tier()
-            self.result_tier = tier
-            lines.append(OUTCOME_TIERS[tier])
-            lines.extend(self._apply_stats(card, tier, None))
-            if card.get("spawns_prospect"):
-                lines.extend(self._spawn_prospect(member))
-            self.result_text = lines
-
-        elif cls == "dates":
-            tier = self._roll_tier()
-            self.result_tier = tier
-            old_stage = self._relationship_stage(self.get_rel(member.name, target_name)) if target_name in {m.name for m in self.members} else None
-            lines.append(OUTCOME_TIERS[tier])
-            lines.extend(self._apply_stats(card, tier, target_name))
-            if old_stage:
-                lines.extend(self._stage_transition_note(member, target_name, old_stage))
-            self.result_text = lines
-
-        elif cls == "choice":
-            kind = card.get("kind")
-            is_prospect = target_name in self.prospects
-            tier = self._roll_tier()
-            self.result_tier = tier
-            if kind == "commit" and is_prospect:
-                prospect = self.prospects.pop(target_name)
-                trust_lo_hi = card.get("stats", {}).get("trust", (10, 10))
-                spark_lo_hi = card.get("stats", {}).get("spark", (10, 10))
-                trust_d = self._tier_value(*trust_lo_hi, tier)
-                spark_d = self._tier_value(*spark_lo_hi, tier)
-                new_member = prospect["char"]
-                new_member.joined_week = self.week
-                self.members.append(new_member)
-                self.get_rel(member.name, new_member.name).update({
-                    "trust": max(0, min(100, prospect["interest"] + trust_d)),
-                    "spark": max(0, min(100, prospect["interest"] + spark_d)),
-                })
-                for other in self.members:
-                    if other.name not in (member.name, new_member.name):
-                        self.get_rel(new_member.name, other.name)  # seeds formed_week for the rest of the cule too
-                if "desire" in card.get("stats", {}):
-                    d = self._tier_value(*card["stats"]["desire"], tier)
-                    member.statuses["desire"] = max(0, min(100, member.statuses["desire"] + d))
-                lines.append(f"{new_member.name} joins the cule for real!")
-                self.result_text = lines
-            elif kind == "breakup":
-                guaranteed = card.get("guaranteed_exit", False)
-                if is_prospect:
-                    self.prospects.pop(target_name)
-                    lines += [OUTCOME_TIERS[tier], f"{target_name} is out of the picture."]
-                    lines.extend(self._apply_stats(card, tier, None, skip_relational=True))
-                elif guaranteed or tier <= EXIT_BREAKUP_TIER:
-                    self.members = [m for m in self.members if m.name != target_name]
-                    self.relationships = {k: v for k, v in self.relationships.items() if target_name not in k}
-                    lines += [OUTCOME_TIERS[tier], f"{target_name} moves out for good."]
-                    lines.extend(self._apply_stats(card, tier, None, skip_relational=True))
-                else:
-                    lines.append(OUTCOME_TIERS[tier])
-                    lines.extend(self._apply_stats(card, tier, target_name))
-                self.result_text = lines
-            else:
-                # ask_to_change, share, message, or a commit card whose
-                # target is already a member (deepening, not converting).
-                old_stage = self._relationship_stage(self.get_rel(member.name, target_name)) if target_name in {m.name for m in self.members} else None
-                lines.append(OUTCOME_TIERS[tier])
-                lines.extend(self._apply_stats(card, tier, target_name))
-                if old_stage:
-                    lines.extend(self._stage_transition_note(member, target_name, old_stage))
-                self.result_text = lines
-
-        self._spend_energy()
-
-    def _stage_transition_note(self, member, target_name, old_stage):
-        new_stage = self._relationship_stage(self.get_rel(member.name, target_name))
-        if new_stage == old_stage:
-            return []
-        order = REL_STAGES
-        verb = "deepens" if order.index(new_stage) > order.index(old_stage) else "takes a step back"
-        return [f"Something with {target_name} {verb} - this feels {REL_STAGE_LABELS[new_stage]} now."]
-
-    def _negotiate_date(self, target_name, day):
-        member = self.active
-        my_prospects = self._member_prospects(member.name)
-        is_prospect = target_name in my_prospects
-        willingness = my_prospects[target_name]["interest"] if is_prospect else self.get_rel(member.name, target_name)["trust"]
-        busy_days = set(self.rng.sample(DAYS, k=self.rng.randint(1, 3)))
-        if day in busy_days:
-            if willingness >= 50:
-                free_days = [d for d in DAYS if d not in busy_days] or [day]
-                return "counter", self.rng.choice(free_days), is_prospect
-            return "decline", None, is_prospect
-        if willingness >= 30:
-            return "accept", None, is_prospect
-        return "decline", None, is_prospect
 
     def _enter_sub(self, kind, options):
         self.sub_kind = kind
@@ -653,7 +219,7 @@ class PolyculeSimulator(Game):
         self.result_tier = None
         self.hand.remove(self.pending_card)
         self.hand_index = 0
-        self._spend_energy()
+        rules.spend_energy(self.model)
         self.state = "result"
 
     def _advance_sub_choice(self):
@@ -663,7 +229,7 @@ class PolyculeSimulator(Game):
             self._enter_sub("day", [(d, d) for d in DAYS])
         elif self.sub_kind == "day":
             self.proposed_day = value
-            outcome, counter_day, is_prospect = self._negotiate_date(self.pending_target, value)
+            outcome, counter_day, is_prospect = rules.negotiate_date(self.model, self.pending_target, value)
             self.date_is_prospect = is_prospect
             if outcome == "accept":
                 self.chosen_day = value
@@ -691,52 +257,16 @@ class PolyculeSimulator(Game):
             self.result_tier = None
             self.hand.remove(self.pending_card)
             self.hand_index = 0
-            self._spend_energy()
+            rules.spend_energy(self.model)
             self.state = "result"
 
-    def _resolve_scheduled_event(self, ev):
-        a = next((m for m in self.members if m.name == ev["a"]), None)
-        if a is None:
-            return [f"Plans between {ev['a']} and {ev['b']} quietly fell through."]
-        activity = ev["activity"]
-        verb = "go jogging" if activity == "Jog" else f"head to the {activity.lower()}"
-        if ev["is_prospect"]:
-            prospect = self.prospects.get(ev["b"])
-            if prospect is None:
-                return [f"{ev['a']}'s plans with {ev['b']} fell through - they'd already drifted apart."]
-            match = activity == prospect["char"].preferred_activity
-            delta = self.rng.randint(15, 30) if match else self.rng.randint(-5, 10)
-            prospect["interest"] = max(0, min(100, prospect["interest"] + delta))
-            lines = [
-                f"{ev['a']} and {ev['b']} {verb} on {ev['day']}.",
-                f"{'This is exactly their thing.' if match else 'They have an okay time, but seem distracted.'} ({delta:+d} interest)",
-            ]
-            if prospect["interest"] <= 0:
-                del self.prospects[ev["b"]]
-                lines.append(f"{ev['b']} stops responding entirely.")
-            return lines
-        b = next((m for m in self.members if m.name == ev["b"]), None)
-        if b is None:
-            return [f"{ev['a']}'s plans with {ev['b']} fell through."]
-        match = activity == b.preferred_activity
-        trust_d = self.rng.randint(4, 12) if match else self.rng.randint(-4, 6)
-        spark_d = self.rng.randint(6, 16) if match else self.rng.randint(-2, 8)
-        rel = self.get_rel(a.name, b.name)
-        rel["trust"] = max(0, min(100, rel["trust"] + trust_d))
-        rel["spark"] = max(0, min(100, rel["spark"] + spark_d))
-        return [
-            f"{ev['a']} and {ev['b']} {verb} on {ev['day']}.",
-            f"{'A perfect match of interests.' if match else 'Not exactly their favorite, but nice together anyway.'} "
-            f"Trust {trust_d:+d}, Spark {spark_d:+d}.",
-        ]
-
     def _finish_turn(self):
-        self.week += 1
+        self.model.week += 1
         events = self.calendar.pop(self.week, [])
         if events:
             lines = []
             for ev in events:
-                lines.extend(self._resolve_scheduled_event(ev))
+                lines.extend(rules.resolve_scheduled_event(self.model, ev))
             self.result_text = lines
             self.result_tier = None
             self.state = "recap"
@@ -810,7 +340,9 @@ class PolyculeSimulator(Game):
                         self.target_index = 0
                         self.state = "target"
                 else:
-                    self._resolve(card, None)
+                    outcome = rules.resolve(self.model, card, None)
+                    self.result_text = outcome.lines
+                    self.result_tier = outcome.tier
                     self.hand.remove(card)
                     self.hand_index = 0
                     self.state = "result"
@@ -826,7 +358,9 @@ class PolyculeSimulator(Game):
                 if self.pending_card.get("schedulable"):
                     self._start_date_flow(target)
                 else:
-                    self._resolve(self.pending_card, target)
+                    outcome = rules.resolve(self.model, self.pending_card, target)
+                    self.result_text = outcome.lines
+                    self.result_tier = outcome.tier
                     self.hand.remove(self.pending_card)
                     self.hand_index = 0
                     self.state = "result"
@@ -1616,7 +1150,7 @@ class PolyculeSimulator(Game):
             kind_label = kind_font.render(label, True, tint)
             surface.blit(kind_label, kind_label.get_rect(midtop=(rect.centerx, y)))
             y += kind_label.get_height() + int(6 * scale)
-            blurb_text = display_blurb if display_blurb is not None else self._preview_blurb(card)
+            blurb_text = display_blurb if display_blurb is not None else rules.preview_blurb(card)
             for line in ui.wrap_text(blurb_font, blurb_text, rect.width - pad * 2):
                 if y + blurb_font.get_height() > rect.bottom - pad:
                     break
