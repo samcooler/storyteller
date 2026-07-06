@@ -52,6 +52,24 @@ def hand_row_reserved_height(sim, scale):
     return int(60 * scale)
 
 
+def _virtual_order(sim):
+    """The live hand, plus any still-fading fx cards (see `draw_card_fx`)
+    reinserted at roughly their original position. A played/discarded card
+    is already gone from `sim.hand` the instant it starts fading, but the
+    row it fades in (fan or collapsed - whichever is showing *this frame*,
+    since a play can change which one that is mid-fade) must keep its slot
+    reserved, or the remaining live cards immediately reflow into it and
+    overlap the fading card."""
+    order = list(sim.hand)
+    for fx in sim.card_fx:
+        order.insert(min(fx["index"], len(order)), fx["card"])
+    return order
+
+
+def _is_live(sim, card):
+    return any(c is card for c in sim.hand)
+
+
 def _fan_slot(main_rect, scale, n, i, show_end_button):
     """(cx, cy, angle, card_w, card_h) for hand-fan card index `i` out of
     `n` - the position/rotation draw_hand_row lays a card at. Shared with
@@ -101,32 +119,40 @@ def _draw_collapsed_card(surface, rect, scale, card):
                      rect.centerx, rect.centery - name_font.get_height() // 2, rect.width - int(8 * scale))
 
 
-def draw_hand_row_collapsed(sim, surface, main_rect, scale, hand):
+def draw_hand_row_collapsed(sim, surface, main_rect, scale):
     """Title-only strip shown while the hand isn't the active selector -
     just enough to remind you what's in hand without eating the space a
     full fanned row would reserve."""
-    n = len(hand)
-    for i, card in enumerate(hand):
+    order = _virtual_order(sim)
+    n = len(order)
+    for i, card in enumerate(order):
+        if not _is_live(sim, card):
+            continue  # this slot is a still-fading card; draw_card_fx renders it
         _draw_collapsed_card(surface, _collapsed_slot(main_rect, scale, n, i), scale, card)
 
 
 def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
-    hand = list(sim.hand)
     if not hand_row_selecting(sim):
-        if hand:
-            draw_hand_row_collapsed(sim, surface, main_rect, scale, hand)
+        if sim.hand or sim.card_fx:
+            draw_hand_row_collapsed(sim, surface, main_rect, scale)
         return
     show_end_button = sim.state != "discard"
-    if not hand and not show_end_button:
+    real_n = len(sim.hand)
+    virtual_hand = _virtual_order(sim)
+    n = len(virtual_hand)
+    if not virtual_hand and not show_end_button:
         return
 
-    n = len(hand)
     if n:
         shadow_off = (int(6 * scale), int(8 * scale))
-        selected_i = sim.hand_index if sim.state in ("hand", "discard") and sim.hand_index < n else None
+        selected_card = sim.hand[sim.hand_index] if sim.hand_index < real_n else None
+        selected_i = next((i for i, c in enumerate(virtual_hand) if c is selected_card), None) \
+            if selected_card is not None else None
         draw_order = [i for i in range(n) if i != selected_i] + ([selected_i] if selected_i is not None else [])
         for i in draw_order:
-            card = hand[i]
+            card = virtual_hand[i]
+            if not _is_live(sim, card):
+                continue  # this slot is a still-fading card; draw_card_fx renders it
             cx, cy, angle, card_w, card_h = _fan_slot(main_rect, scale, n, i, show_end_button)
             selected = i == selected_i
             if selected:
@@ -150,7 +176,7 @@ def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
         btn_w = int(150 * scale)
         btn_rect = pygame.Rect(main_rect.centerx - btn_w // 2, main_rect.bottom - margin - button_h,
                                 btn_w, button_h)
-        selected = sim.state == "hand" and sim.hand_index == n
+        selected = sim.state == "hand" and sim.hand_index == real_n
         shadow_rect = btn_rect.move(shadow_off[0], shadow_off[1])
         shadow_surf = pygame.Surface(btn_rect.size, pygame.SRCALPHA)
         shadow_surf.fill((0, 0, 0, 100))
@@ -166,10 +192,18 @@ def draw_hand_row(sim, surface, main_rect, scale, body_font, small_font):
 
 def draw_card_fx(sim, surface, main_rect, scale):
     """Renders cards that were just played/discarded, fading/shrinking out
-    from wherever they last actually sat in the hand row (fanned or
-    collapsed - `PolyculeSimulator._remove_card` records which), instead of
-    just vanishing between frames. Purely cosmetic: the FSM/model state
-    change already happened when the card was removed from `sim.hand`."""
+    from wherever they currently sit in the (fan or collapsed) hand row's
+    virtual order - see `_virtual_order` for why that's not just the
+    position they happened to occupy at removal time. Purely cosmetic: the
+    FSM/model state change already happened when the card was removed from
+    `sim.hand`."""
+    if not sim.card_fx:
+        return
+    fan = hand_row_selecting(sim)
+    order = _virtual_order(sim)
+    n = len(order)
+    show_end_button = sim.state != "discard"
+
     for fx in sim.card_fx:
         progress = min(1.0, fx["elapsed"] / FX_DURATION)
         alpha = round(255 * (1.0 - progress))
@@ -179,14 +213,14 @@ def draw_card_fx(sim, surface, main_rect, scale):
         shrink = 1.0 - 0.35 * eased
         amplitude = int(36 * scale)
         rise = eased * (-amplitude if fx["kind"] != "discard" else amplitude)
+        index = next(i for i, c in enumerate(order) if c is fx["card"])
 
-        if fx["fan"]:
-            show_end_button = fx["kind"] != "discard"
-            cx, cy, angle, card_w, card_h = _fan_slot(main_rect, scale, fx["n"], fx["index"], show_end_button)
+        if fan:
+            cx, cy, angle, card_w, card_h = _fan_slot(main_rect, scale, n, index, show_end_button)
             card_surf = hand_card_surface(sim, fx["card"], card_w, card_h, scale, selected=False)
             card_surf = pygame.transform.rotate(card_surf, angle)
         else:
-            rect = _collapsed_slot(main_rect, scale, fx["n"], fx["index"])
+            rect = _collapsed_slot(main_rect, scale, n, index)
             cx, cy = rect.center
             card_surf = pygame.Surface(rect.size, pygame.SRCALPHA)
             _draw_collapsed_card(card_surf, pygame.Rect(0, 0, rect.width, rect.height), scale, fx["card"])
@@ -195,5 +229,5 @@ def draw_card_fx(sim, surface, main_rect, scale):
             new_size = (max(1, round(card_surf.get_width() * shrink)), max(1, round(card_surf.get_height() * shrink)))
             card_surf = pygame.transform.smoothscale(card_surf, new_size)
         card_surf.set_alpha(alpha)
-        rect = card_surf.get_rect(center=(cx, cy + rise))
-        surface.blit(card_surf, rect)
+        blit_rect = card_surf.get_rect(center=(cx, cy + rise))
+        surface.blit(card_surf, blit_rect)
