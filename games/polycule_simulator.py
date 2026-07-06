@@ -46,6 +46,7 @@ from .polycule_constants import (
     stat_flavor,
 )
 from .polycule_model import PolyculeModel
+from .polycule_states import STATES
 
 
 class PolyculeSimulator(Game):
@@ -298,89 +299,11 @@ class PolyculeSimulator(Game):
             return
         if self.overlay:
             return
-        if self.state == "draw":
-            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                if len(self.hand) > MAX_HAND:
-                    self.state = "discard"
-                else:
-                    self.state = "hand"
-                self.hand_index = 0
-        elif self.state == "discard":
-            if event.key in (pygame.K_LEFT, pygame.K_a):
-                self.hand_index = (self.hand_index - 1) % len(self.hand)
-            elif event.key in (pygame.K_RIGHT, pygame.K_d):
-                self.hand_index = (self.hand_index + 1) % len(self.hand)
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                card = self.hand[self.hand_index]
-                self.hand.remove(card)
-                self.hand_index = 0
-                if len(self.hand) <= MAX_HAND:
-                    self.state = "hand"
-        elif self.state == "hand":
-            options = self.hand + [END_WEEK]
-            if event.key in (pygame.K_LEFT, pygame.K_a):
-                self.hand_index = (self.hand_index - 1) % len(options)
-            elif event.key in (pygame.K_RIGHT, pygame.K_d):
-                self.hand_index = (self.hand_index + 1) % len(options)
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                card = options[self.hand_index]
-                if card is END_WEEK:
-                    self._finish_turn()
-                elif card["class"] == "choice" or (card["class"] == "dates" and card.get("scope") == "pair"):
-                    targets = self._card_targets(card)
-                    if not targets:
-                        self.result_text = [f"{card['name']} has no one left to target. It fizzles."]
-                        self.result_tier = None
-                        self.hand.remove(card)
-                        self.hand_index = 0
-                        self.state = "result"
-                    else:
-                        self.pending_card = card
-                        self.target_options = targets
-                        self.target_index = 0
-                        self.state = "target"
-                else:
-                    outcome = rules.resolve(self.model, card, None)
-                    self.result_text = outcome.lines
-                    self.result_tier = outcome.tier
-                    self.hand.remove(card)
-                    self.hand_index = 0
-                    self.state = "result"
-        elif self.state == "target":
-            if event.key in (pygame.K_LEFT, pygame.K_a, pygame.K_UP, pygame.K_w):
-                self.target_index = (self.target_index - 1) % len(self.target_options)
-            elif event.key in (pygame.K_RIGHT, pygame.K_d, pygame.K_DOWN, pygame.K_s):
-                self.target_index = (self.target_index + 1) % len(self.target_options)
-            elif event.key == pygame.K_BACKSPACE:
-                self.state = "hand"
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                target = self.target_options[self.target_index]
-                if self.pending_card.get("schedulable"):
-                    self._start_date_flow(target)
-                else:
-                    outcome = rules.resolve(self.model, self.pending_card, target)
-                    self.result_text = outcome.lines
-                    self.result_tier = outcome.tier
-                    self.hand.remove(self.pending_card)
-                    self.hand_index = 0
-                    self.state = "result"
-        elif self.state == "sub_choice":
-            if event.key in (pygame.K_LEFT, pygame.K_a, pygame.K_UP, pygame.K_w):
-                self.sub_index = (self.sub_index - 1) % len(self.sub_options)
-            elif event.key in (pygame.K_RIGHT, pygame.K_d, pygame.K_DOWN, pygame.K_s):
-                self.sub_index = (self.sub_index + 1) % len(self.sub_options)
-            elif event.key == pygame.K_BACKSPACE:
-                self.state = "hand"
-            elif event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                self._advance_sub_choice()
-        elif self.state == "result":
-            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                self.state = "hand"
-                if self.hand_index >= len(self.hand):
-                    self.hand_index = max(0, len(self.hand) - 1)
-        elif self.state == "recap":
-            if event.key in (pygame.K_RETURN, pygame.K_SPACE):
-                self._start_turn(self.active)
+        # Turn/selection FSM: each state's input handling lives in its own
+        # object (see polycule_states); self.state is that object's key.
+        handler = STATES.get(self.state)
+        if handler is not None:
+            handler.handle_key(self, event)
 
     def _network_geometry(self):
         """Left panel = turn/harmony header, then a row of member stamps
